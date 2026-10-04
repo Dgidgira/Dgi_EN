@@ -1,0 +1,27 @@
+{
+  "extName": {
+    "message": "Запись инструкций"
+  },
+  "extDescription": {
+    "message": "Записывает шаги бизнес-процесса в браузере для создания пользовательских инструкций."
+  },
+  "actionTitle": {
+    "message": "Запись инструкций"
+  },
+  "popupStatusIdle": {
+    "message": "Запись остановлена"
+  },
+  "popupStatusRecording": {
+    "message": "Идёт запись"
+  },
+  "popupStart": {
+    "message": "Начать запись"
+  },
+  "popupStop": {
+    "message": "Остановить запись"
+  },
+  "badgeRecording": {
+    "message": "REC",
+    "description": "Короткая метка на значке расширения во время записи (не длиннее 4 символов)."
+  }
+}

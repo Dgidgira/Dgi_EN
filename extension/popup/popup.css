@@ -1,0 +1,22 @@
+body {
+  width: 220px;
+  margin: 0;
+  padding: 12px;
+  font: 14px system-ui, sans-serif;
+}
+
+.status {
+  margin: 0 0 10px;
+}
+
+.status.recording {
+  color: #c62828;
+  font-weight: 600;
+}
+
+button {
+  width: 100%;
+  padding: 8px;
+  font: inherit;
+  cursor: pointer;
+}
