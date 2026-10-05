@@ -47,9 +47,6 @@
       }
     }
   },
-  "viewerNoLabel": {
-    "message": "(подпись не найдена)"
-  },
   "viewerNoScreenshot": {
     "message": "Скриншот не сделан"
   },
@@ -61,6 +58,189 @@
         "example": "label"
       }
     }
+  },
+  "viewerLabelStats": {
+    "message": "Описаний с подписью элемента: $WITH$ из $TOTAL$",
+    "placeholders": {
+      "with": {
+        "content": "$1",
+        "example": "13"
+      },
+      "total": {
+        "content": "$2",
+        "example": "14"
+      }
+    }
+  },
+  "viewerDebugToggle": {
+    "message": "Технические подробности"
+  },
+  "describeClickButton": {
+    "message": "Нажмите кнопку «$LABEL$»",
+    "placeholders": {
+      "label": {
+        "content": "$1",
+        "example": "Фамилия"
+      }
+    }
+  },
+  "describeClickButtonNoLabel": {
+    "message": "Нажмите выделенную кнопку"
+  },
+  "describeClickLink": {
+    "message": "Перейдите по ссылке «$LABEL$»",
+    "placeholders": {
+      "label": {
+        "content": "$1",
+        "example": "Фамилия"
+      }
+    }
+  },
+  "describeClickLinkNoLabel": {
+    "message": "Перейдите по выделенной ссылке"
+  },
+  "describeClickTab": {
+    "message": "Откройте вкладку «$LABEL$»",
+    "placeholders": {
+      "label": {
+        "content": "$1",
+        "example": "Фамилия"
+      }
+    }
+  },
+  "describeClickTabNoLabel": {
+    "message": "Откройте выделенную вкладку"
+  },
+  "describeClickOption": {
+    "message": "Выберите «$LABEL$»",
+    "placeholders": {
+      "label": {
+        "content": "$1",
+        "example": "Фамилия"
+      }
+    }
+  },
+  "describeClickOptionNoLabel": {
+    "message": "Выберите выделенный пункт"
+  },
+  "describeClickGeneric": {
+    "message": "Нажмите «$LABEL$»",
+    "placeholders": {
+      "label": {
+        "content": "$1",
+        "example": "Фамилия"
+      }
+    }
+  },
+  "describeClickGenericNoLabel": {
+    "message": "Нажмите на выделенный элемент"
+  },
+  "describeInput": {
+    "message": "В поле «$LABEL$» введите «$VALUE$»",
+    "placeholders": {
+      "label": {
+        "content": "$1",
+        "example": "Фамилия"
+      },
+      "value": {
+        "content": "$2",
+        "example": "Тестов"
+      }
+    }
+  },
+  "describeInputNoLabel": {
+    "message": "В выделенное поле введите «$VALUE$»",
+    "placeholders": {
+      "value": {
+        "content": "$2",
+        "example": "Тестов"
+      }
+    }
+  },
+  "describeInputClear": {
+    "message": "Очистите поле «$LABEL$»",
+    "placeholders": {
+      "label": {
+        "content": "$1",
+        "example": "Фамилия"
+      }
+    }
+  },
+  "describeInputClearNoLabel": {
+    "message": "Очистите выделенное поле"
+  },
+  "describeInputPassword": {
+    "message": "В поле «$LABEL$» введите пароль",
+    "placeholders": {
+      "label": {
+        "content": "$1",
+        "example": "Фамилия"
+      }
+    }
+  },
+  "describeInputPasswordNoLabel": {
+    "message": "В выделенное поле введите пароль"
+  },
+  "describeSelect": {
+    "message": "В списке «$LABEL$» выберите «$VALUE$»",
+    "placeholders": {
+      "label": {
+        "content": "$1",
+        "example": "Фамилия"
+      },
+      "value": {
+        "content": "$2",
+        "example": "Тестов"
+      }
+    }
+  },
+  "describeSelectNoLabel": {
+    "message": "В выделенном списке выберите «$VALUE$»",
+    "placeholders": {
+      "value": {
+        "content": "$2",
+        "example": "Тестов"
+      }
+    }
+  },
+  "describeCheckboxOn": {
+    "message": "Отметьте «$LABEL$»",
+    "placeholders": {
+      "label": {
+        "content": "$1",
+        "example": "Фамилия"
+      }
+    }
+  },
+  "describeCheckboxOnNoLabel": {
+    "message": "Отметьте выделенный флажок"
+  },
+  "describeCheckboxOff": {
+    "message": "Снимите отметку «$LABEL$»",
+    "placeholders": {
+      "label": {
+        "content": "$1",
+        "example": "Фамилия"
+      }
+    }
+  },
+  "describeCheckboxOffNoLabel": {
+    "message": "Снимите отметку с выделенного флажка"
+  },
+  "describeRadio": {
+    "message": "Выберите вариант «$LABEL$»",
+    "placeholders": {
+      "label": {
+        "content": "$1",
+        "example": "Фамилия"
+      }
+    }
+  },
+  "describeRadioNoLabel": {
+    "message": "Выберите выделенный вариант"
+  },
+  "describeUnknown": {
+    "message": "Выполните действие с выделенным элементом"
   },
   "badgeRecording": {
     "message": "REC",

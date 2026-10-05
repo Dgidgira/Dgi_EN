@@ -1,5 +1,5 @@
 // Страница просмотра записи: шаги со скриншотами и подсветкой элемента (FR-2).
-// Пока показывает «сырые» данные шага; шаблонные описания появятся в задаче 4 (FR-3).
+// Текст шага — шаблонное описание (FR-3, shared/describe.js).
 
 const t = (key, substitutions) => chrome.i18n.getMessage(key, substitutions);
 
@@ -9,6 +9,7 @@ const HIGHLIGHT_PADDING = 4;
 
 const stepsEl = document.getElementById("steps");
 const emptyEl = document.getElementById("empty");
+const statsEl = document.getElementById("stats");
 
 document.title = t("viewerTitle");
 document.getElementById("title").textContent = t("viewerTitle");
@@ -62,22 +63,33 @@ function renderShot(step, dataUrl) {
 
 function renderStep(step, index, dataUrl) {
   const item = el("li", "step");
+  const description = describeStep(step);
 
   const head = el("p", "step-head");
   head.append(el("span", "step-number", t("viewerStepNumber", [String(index + 1)])));
-  head.append(step.label
-    ? el("span", "step-label", step.label)
-    : el("span", "step-label missing", t("viewerNoLabel")));
+  head.append(el("span", "step-text", description.text));
   item.append(head);
 
-  const meta = [step.type];
-  if (step.value !== null && step.value !== undefined) meta.push(`«${step.value}»`);
+  item.append(renderShot(step, dataUrl));
+
+  // Данные шага для анализа в спайке (SQ-5): откуда взята подпись, что записано
+  const debug = el("details", "step-debug");
+  debug.append(el("summary", null, t("viewerDebugToggle")));
+  const meta = [step.type, step.label ? `«${step.label}»` : ""];
+  if (step.value !== null && step.value !== undefined) meta.push(`= «${step.value}»`);
   meta.push(t("viewerLabelSource", [step.labelSource]));
   meta.push(step.page?.url || "");
-  item.append(el("p", "step-meta", meta.filter(Boolean).join(" · ")));
+  debug.append(el("p", "step-meta", meta.filter(Boolean).join(" · ")));
+  item.append(debug);
 
-  item.append(renderShot(step, dataUrl));
   return item;
+}
+
+// Сводка для SQ-5: у скольких шагов описание удалось построить с подписью элемента
+function renderStats(steps) {
+  const withLabel = steps.filter((step) => describeStep(step).usesLabel).length;
+  statsEl.textContent = t("viewerLabelStats", [String(withLabel), String(steps.length)]);
+  statsEl.hidden = steps.length === 0;
 }
 
 async function render() {
@@ -86,6 +98,7 @@ async function render() {
   const shots = shotKeys.length ? await chrome.storage.local.get(shotKeys) : {};
 
   emptyEl.hidden = steps.length > 0;
+  renderStats(steps);
   stepsEl.replaceChildren(...steps.map((step, i) => renderStep(step, i, shots[SHOT_PREFIX + step.id])));
 }
 
