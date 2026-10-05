@@ -4,7 +4,7 @@
   --surface: #f9fafb;
   --card: #fff;
   --border: #e5e7eb;
-  --highlight: #f59e0b;
+  --highlight: #dc2626;
 }
 
 body {
@@ -89,7 +89,7 @@ h1 {
   box-sizing: border-box;
   border: 3px solid var(--highlight);
   border-radius: 6px;
-  box-shadow: 0 0 0 4px rgb(245 158 11 / 0.25);
+  box-shadow: 0 0 0 4px rgb(220 38 38 / 0.25);
   pointer-events: none;
 }
 
