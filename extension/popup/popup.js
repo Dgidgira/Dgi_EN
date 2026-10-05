@@ -10,6 +10,7 @@ function render(isRecording) {
   statusEl.textContent = t(isRecording ? "popupStatusRecording" : "popupStatusIdle");
   statusEl.classList.toggle("recording", isRecording);
   toggleEl.textContent = t(isRecording ? "popupStop" : "popupStart");
+  toggleEl.classList.toggle("stop", isRecording);
 }
 
 async function init() {

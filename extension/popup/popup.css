@@ -1,22 +1,109 @@
-body {
-  width: 220px;
-  margin: 0;
-  padding: 12px;
-  font: 14px system-ui, sans-serif;
+:root {
+  --text: #1f2937;
+  --muted: #6b7280;
+  --surface: #f9fafb;
+  --start: #16a34a;
+  --start-hover: #15803d;
+  --stop: #dc2626;
+  --stop-hover: #b91c1c;
+  --focus: #93c5fd;
 }
 
+body {
+  width: 240px;
+  margin: 0;
+  padding: 16px;
+  font: 14px system-ui, sans-serif;
+  color: var(--text);
+  background: var(--surface);
+}
+
+/* Строка статуса с цветной точкой-индикатором */
 .status {
-  margin: 0 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px;
+  color: var(--muted);
+}
+
+.status::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #d1d5db;
+  flex-shrink: 0;
 }
 
 .status.recording {
-  color: #c62828;
+  color: var(--stop);
   font-weight: 600;
 }
 
+.status.recording::before {
+  background: var(--stop);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% { opacity: 0.35; }
+}
+
+/* Кнопка: зелёная для старта, красная для остановки */
 button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   width: 100%;
-  padding: 8px;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 10px;
   font: inherit;
+  font-weight: 600;
+  color: #fff;
+  background: var(--start);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.15);
   cursor: pointer;
+  transition: background-color 0.15s, transform 0.05s;
+}
+
+button::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+button:hover {
+  background: var(--start-hover);
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+button:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+button.stop {
+  background: var(--stop);
+}
+
+button.stop:hover {
+  background: var(--stop-hover);
+}
+
+/* Квадрат «стоп» вместо круга */
+button.stop::before {
+  border-radius: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status.recording::before { animation: none; }
+  button { transition: none; }
 }
