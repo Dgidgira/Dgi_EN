@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Тестовая страница: карточка происшествия</title>
+  <!-- Синтетическая страница для ручных проверок записи шагов (MC-2). Все данные вымышленные. -->
+  <style>
+    body { font: 15px system-ui, sans-serif; max-width: 640px; margin: 24px auto; padding: 0 16px; color: #1f2937; }
+    fieldset { margin: 0 0 16px; border: 1px solid #d1d5db; border-radius: 8px; }
+    .row { margin: 8px 0; }
+    .row > label { display: inline-block; min-width: 180px; }
+    input[type=text], input[type=tel], input[type=password], textarea, select { padding: 4px 6px; font: inherit; }
+    button, input[type=submit] { padding: 6px 12px; font: inherit; cursor: pointer; }
+    .fake-button { display: inline-block; padding: 6px 12px; background: #e5e7eb; border-radius: 6px; cursor: pointer; user-select: none; }
+    .blank { height: 60px; background: #f3f4f6; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #6b7280; }
+    #log { margin-top: 16px; color: #6b7280; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <h1>Карточка происшествия (тест)</h1>
+
+  <form id="card">
+    <fieldset>
+      <legend>Заявитель</legend>
+      <div class="row"><label for="last-name">Фамилия</label><input id="last-name" type="text"></div>
+      <div class="row"><label for="phone">Телефон заявителя</label><input id="phone" type="tel"></div>
+      <div class="row"><label>Только placeholder</label><input type="text" placeholder="Адрес происшествия"></div>
+      <div class="row"><label>Без подписи</label><input type="text" name="extra_field"></div>
+      <div class="row"><label for="secret">Пароль</label><input id="secret" type="password"></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Происшествие</legend>
+      <div class="row">
+        <label for="type">Тип происшествия</label>
+        <select id="type">
+          <option value="">— выберите —</option>
+          <option>Пожар</option>
+          <option>ДТП</option>
+          <option>Медицинская помощь</option>
+        </select>
+      </div>
+      <div class="row"><label for="description">Описание</label><textarea id="description" rows="2"></textarea></div>
+      <div class="row"><label><input type="checkbox" id="injured"> Есть пострадавшие</label></div>
+      <div class="row">
+        Приоритет:
+        <label><input type="radio" name="priority" value="high"> Высокий</label>
+        <label><input type="radio" name="priority" value="normal"> Обычный</label>
+      </div>
+    </fieldset>
+
+    <div class="row">
+      <button type="button" id="save">Сохранить</button>
+      <button type="button" aria-label="Распечатать карточку">🖨</button>
+      <input type="submit" value="Передать в службу">
+      <a href="#help">Справка</a>
+      <span class="fake-button" id="fake">Нестандартная кнопка</span>
+    </div>
+  </form>
+
+  <p class="blank">Пустая область: клик сюда не должен записываться</p>
+  <p id="log"></p>
+
+  <script>
+    // Страница не отправляет данные: только показывает, что действие сработало
+    const log = (text) => { document.getElementById("log").textContent = text; };
+    document.getElementById("card").addEventListener("submit", (e) => { e.preventDefault(); log("Карточка «передана» (тест)"); });
+    document.getElementById("save").addEventListener("click", () => log("Карточка «сохранена» (тест)"));
+    document.getElementById("fake").addEventListener("click", () => log("Нажата нестандартная кнопка"));
+  </script>
+</body>
+</html>

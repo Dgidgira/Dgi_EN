@@ -2,12 +2,19 @@
   "manifest_version": 3,
   "name": "__MSG_extName__",
   "description": "__MSG_extDescription__",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "default_locale": "ru",
   "permissions": ["storage"],
   "background": {
     "service_worker": "background.js"
   },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content/recorder.js"],
+      "run_at": "document_start"
+    }
+  ],
   "action": {
     "default_title": "__MSG_actionTitle__",
     "default_popup": "popup/popup.html"

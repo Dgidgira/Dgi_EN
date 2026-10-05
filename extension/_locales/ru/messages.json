@@ -20,6 +20,12 @@
   "popupStop": {
     "message": "Остановить запись"
   },
+  "popupStepCount": {
+    "message": "Записано шагов: $COUNT$",
+    "placeholders": {
+      "count": { "content": "$1", "example": "5" }
+    }
+  },
   "badgeRecording": {
     "message": "REC",
     "description": "Короткая метка на значке расширения во время записи (не длиннее 4 символов)."

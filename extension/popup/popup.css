@@ -103,6 +103,13 @@ button.stop::before {
   border-radius: 2px;
 }
 
+.step-count {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .status.recording::before { animation: none; }
   button { transition: none; }
