@@ -181,6 +181,52 @@
   "describeInputPasswordNoLabel": {
     "message": "В выделенное поле введите пароль"
   },
+  "describeInputEnter": {
+    "message": "В поле «$LABEL$» введите «$VALUE$» и нажмите Enter",
+    "placeholders": {
+      "label": {
+        "content": "$1",
+        "example": "Найти"
+      },
+      "value": {
+        "content": "$2",
+        "example": "погода"
+      }
+    }
+  },
+  "describeInputEnterNoLabel": {
+    "message": "В выделенное поле введите «$VALUE$» и нажмите Enter",
+    "placeholders": {
+      "value": {
+        "content": "$2",
+        "example": "погода"
+      }
+    }
+  },
+  "describeInputClearEnter": {
+    "message": "Очистите поле «$LABEL$» и нажмите Enter",
+    "placeholders": {
+      "label": {
+        "content": "$1",
+        "example": "Найти"
+      }
+    }
+  },
+  "describeInputClearEnterNoLabel": {
+    "message": "Очистите выделенное поле и нажмите Enter"
+  },
+  "describeInputPasswordEnter": {
+    "message": "В поле «$LABEL$» введите пароль и нажмите Enter",
+    "placeholders": {
+      "label": {
+        "content": "$1",
+        "example": "Найти"
+      }
+    }
+  },
+  "describeInputPasswordEnterNoLabel": {
+    "message": "В выделенное поле введите пароль и нажмите Enter"
+  },
   "describeSelect": {
     "message": "В списке «$LABEL$» выберите «$VALUE$»",
     "placeholders": {

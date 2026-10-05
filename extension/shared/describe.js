@@ -26,7 +26,7 @@ function clickKind(element = {}) {
   return "Generic";
 }
 
-// Ключ шаблона в messages.json: "describe" + действие + вид элемента + ("" | "NoLabel").
+// Ключ шаблона в messages.json: "describe" + действие + вид элемента + ("" | "Enter") + ("" | "NoLabel").
 // Возвращает текст и признак, что в описании использована подпись элемента (для оценки SQ-5).
 function describeStep(step, t = (key, subs) => chrome.i18n.getMessage(key, subs)) {
   const label = READABLE_LABEL_SOURCES.has(step.labelSource) ? step.label : "";
@@ -46,6 +46,7 @@ function describeStep(step, t = (key, subs) => chrome.i18n.getMessage(key, subs)
       if (step.element?.inputType === "password") key = "describeInputPassword";
       else if (value === "") key = "describeInputClear";
       else key = "describeInput";
+      if (step.pressedEnter) key += "Enter";
       substitutions = [label, value];
       break;
     case "select":

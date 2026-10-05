@@ -19,6 +19,12 @@
 <body>
   <h1>Карточка происшествия (тест)</h1>
 
+  <!-- Поиск с отправкой по Enter (MC-5) -->
+  <form id="search" class="row">
+    <label for="q">Поиск по карточкам</label>
+    <input id="q" type="search">
+  </form>
+
   <form id="card">
     <fieldset>
       <legend>Заявитель</legend>
@@ -68,6 +74,7 @@
   <script>
     // Страница не отправляет данные: только показывает, что действие сработало
     const log = (text) => { document.getElementById("log").textContent = text; };
+    document.getElementById("search").addEventListener("submit", (e) => { e.preventDefault(); log("Поиск выполнен (тест)"); });
     document.getElementById("card").addEventListener("submit", (e) => { e.preventDefault(); log("Карточка «передана» (тест)"); });
     document.getElementById("save").addEventListener("click", () => log("Карточка «сохранена» (тест)"));
     document.getElementById("fake").addEventListener("click", () => log("Нажата нестандартная кнопка"));

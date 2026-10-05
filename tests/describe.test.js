@@ -33,6 +33,10 @@ const cases = [
   [step("input", "Пароль", "label", "***", { tag: "input", inputType: "password" }), "В поле «Пароль» введите пароль", true],
   [step("input", "Фамилия", "label", "", { tag: "input", inputType: "text" }), "Очистите поле «Фамилия»", true],
   [step("input", "Описание", "label", "а".repeat(150), { tag: "textarea" }), "В поле «Описание» введите «" + "а".repeat(99) + "…»", true],
+  [{ ...step("input", "Найти", "aria-label", "погода", { tag: "textarea", role: "combobox" }), pressedEnter: true }, "В поле «Найти» введите «погода» и нажмите Enter", true],
+  [{ ...step("input", "", "none", "погода", { tag: "input", inputType: "search" }), pressedEnter: true }, "В выделенное поле введите «погода» и нажмите Enter", false],
+  [{ ...step("input", "Пароль", "label", "***", { tag: "input", inputType: "password" }), pressedEnter: true }, "В поле «Пароль» введите пароль и нажмите Enter", true],
+  [{ ...step("input", "Поиск", "label", "", { tag: "input", inputType: "search" }), pressedEnter: true }, "Очистите поле «Поиск» и нажмите Enter", true],
   [step("select", "Тип происшествия", "label", "Пожар", { tag: "select" }), "В списке «Тип происшествия» выберите «Пожар»", true],
   [step("select", "", "none", "Пожар", { tag: "select" }), "В выделенном списке выберите «Пожар»", false],
   [step("checkbox", "Есть пострадавшие", "label", true, { tag: "input", inputType: "checkbox" }), "Отметьте «Есть пострадавшие»", true],
@@ -60,7 +64,7 @@ cases.forEach(([input, expectedText, expectedUsesLabel], i) => {
 // Для каждого шаблона должен быть вариант без подписи (иначе chrome.i18n вернёт пустую строку)
 const templateBases = [
   "ClickButton", "ClickLink", "ClickTab", "ClickOption", "ClickGeneric",
-  "Input", "InputClear", "InputPassword", "Select", "CheckboxOn", "CheckboxOff", "Radio",
+  "Input", "InputClear", "InputPassword", "InputEnter", "InputClearEnter", "InputPasswordEnter", "Select", "CheckboxOn", "CheckboxOff", "Radio",
 ];
 templateBases.forEach((base) => {
   ["", "NoLabel"].forEach((suffix) => {
