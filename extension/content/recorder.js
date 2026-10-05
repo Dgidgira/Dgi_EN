@@ -86,6 +86,7 @@
 
   function buildStep(type, el, value) {
     const label = getLabel(el);
+    const rect = el.getBoundingClientRect();
     return {
       id: crypto.randomUUID(),
       type,
@@ -98,29 +99,48 @@
         role: el.getAttribute("role"),
       },
       page: { url: location.href, title: document.title },
+      // Положение элемента в CSS-пикселях относительно видимой области: по нему рисуется подсветка
+      rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+      viewport: { width: window.innerWidth, height: window.innerHeight },
       timestamp: Date.now(),
     };
   }
 
-  function sendStep(step) {
+  function send(message) {
     try {
-      chrome.runtime.sendMessage({ type: "step", step }).catch(() => {});
+      chrome.runtime.sendMessage(message).catch(() => {});
     } catch {
       // Расширение перезагружено, а старый скрипт остался на странице: игнорируем.
     }
   }
 
+  function sendStep(step) {
+    send({ type: "step", step });
+  }
+
+  // Элемент, клик по которому станет шагом, или null
+  function resolveClickTarget(target) {
+    const el = target.closest(CLICKABLE_SELECTOR) || clickableByCursor(target);
+    if (!el) return null;
+    if (isTextInput(el) || el.tagName === "SELECT" || el.tagName === "OPTION") return null;
+    // Чекбоксы и радиокнопки пишем по change: так шаг фиксируется и при клике по их label
+    if (isCheckable(el)) return null;
+    // Клик по label только ставит фокус в связанное поле или переключает чекбокс
+    if (el.tagName === "LABEL" && el.control) return null;
+    return el;
+  }
+
+  // Скриншот для клика делаем при нажатии кнопки мыши, до самого клика (FR-2):
+  // после клика страница может уже смениться. background.js привяжет снимок к шагу.
+  function onPointerDown(event) {
+    if (!isRecording || !event.isTrusted || event.button !== 0) return;
+    if (resolveClickTarget(event.target)) send({ type: "capture" });
+  }
+
   function onClick(event) {
     if (!isRecording || !event.isTrusted) return;
-    const el = event.target.closest(CLICKABLE_SELECTOR) || clickableByCursor(event.target);
-    if (!el) return;
-    if (isTextInput(el) || el.tagName === "SELECT" || el.tagName === "OPTION") return;
-    // Чекбоксы и радиокнопки пишем по change: так шаг фиксируется и при клике по их label
-    if (isCheckable(el)) return;
-    // Клик по label только ставит фокус в связанное поле или переключает чекбокс
-    if (el.tagName === "LABEL" && el.control) return;
-
-    sendStep(buildStep("click", el, null));
+    const el = resolveClickTarget(event.target);
+    if (el) sendStep(buildStep("click", el, null));
   }
 
   // Нестандартные элементы (div, span) без роли: считаем кликабельными, если у них курсор-рука.
@@ -151,6 +171,7 @@
   }
 
   // Фаза перехвата: шаг фиксируется, даже если страница останавливает всплытие события
+  document.addEventListener("pointerdown", onPointerDown, true);
   document.addEventListener("click", onClick, true);
   document.addEventListener("change", onChange, true);
 })();

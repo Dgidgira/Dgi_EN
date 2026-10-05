@@ -6,6 +6,13 @@ const t = (key, substitutions) => chrome.i18n.getMessage(key, substitutions);
 const statusEl = document.getElementById("status");
 const toggleEl = document.getElementById("toggle");
 const stepCountEl = document.getElementById("step-count");
+const openViewerEl = document.getElementById("open-viewer");
+
+openViewerEl.textContent = t("popupOpenViewer");
+openViewerEl.addEventListener("click", () => {
+  chrome.tabs.create({ url: chrome.runtime.getURL("viewer/viewer.html") });
+  window.close();
+});
 
 function render(isRecording) {
   statusEl.textContent = t(isRecording ? "popupStatusRecording" : "popupStatusIdle");

@@ -23,7 +23,43 @@
   "popupStepCount": {
     "message": "Записано шагов: $COUNT$",
     "placeholders": {
-      "count": { "content": "$1", "example": "5" }
+      "count": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },
+  "popupOpenViewer": {
+    "message": "Открыть запись"
+  },
+  "viewerTitle": {
+    "message": "Просмотр записи"
+  },
+  "viewerEmpty": {
+    "message": "Шагов пока нет. Начните запись в окне расширения и выполните действия на странице."
+  },
+  "viewerStepNumber": {
+    "message": "Шаг $NUMBER$",
+    "placeholders": {
+      "number": {
+        "content": "$1",
+        "example": "1"
+      }
+    }
+  },
+  "viewerNoLabel": {
+    "message": "(подпись не найдена)"
+  },
+  "viewerNoScreenshot": {
+    "message": "Скриншот не сделан"
+  },
+  "viewerLabelSource": {
+    "message": "источник подписи: $SOURCE$",
+    "placeholders": {
+      "source": {
+        "content": "$1",
+        "example": "label"
+      }
     }
   },
   "badgeRecording": {

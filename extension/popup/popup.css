@@ -103,6 +103,22 @@ button.stop::before {
   border-radius: 2px;
 }
 
+/* Второстепенная кнопка: светлая, без цветной точки */
+button.secondary {
+  margin-top: 10px;
+  color: var(--text);
+  background: #fff;
+  box-shadow: inset 0 0 0 1px #d1d5db;
+}
+
+button.secondary::before {
+  content: none;
+}
+
+button.secondary:hover {
+  background: #f3f4f6;
+}
+
 .step-count {
   margin: 10px 0 0;
   font-size: 12px;

@@ -61,12 +61,17 @@
   <p class="blank">Пустая область: клик сюда не должен записываться</p>
   <p id="log"></p>
 
+  <!-- Для проверки подсветки после прокрутки (MC-3) -->
+  <div style="height: 1200px"></div>
+  <button type="button" id="bottom">Кнопка внизу страницы</button>
+
   <script>
     // Страница не отправляет данные: только показывает, что действие сработало
     const log = (text) => { document.getElementById("log").textContent = text; };
     document.getElementById("card").addEventListener("submit", (e) => { e.preventDefault(); log("Карточка «передана» (тест)"); });
     document.getElementById("save").addEventListener("click", () => log("Карточка «сохранена» (тест)"));
     document.getElementById("fake").addEventListener("click", () => log("Нажата нестандартная кнопка"));
+    document.getElementById("bottom").addEventListener("click", () => log("Нажата кнопка внизу страницы"));
   </script>
 </body>
 </html>

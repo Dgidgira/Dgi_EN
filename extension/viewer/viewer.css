@@ -1,0 +1,99 @@
+:root {
+  --text: #1f2937;
+  --muted: #6b7280;
+  --surface: #f9fafb;
+  --card: #fff;
+  --border: #e5e7eb;
+  --highlight: #f59e0b;
+}
+
+body {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px;
+  font: 15px system-ui, sans-serif;
+  color: var(--text);
+  background: var(--surface);
+}
+
+h1 {
+  margin: 0 0 20px;
+  font-size: 22px;
+}
+
+.empty {
+  color: var(--muted);
+}
+
+.steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.step {
+  margin: 0 0 24px;
+  padding: 16px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.step-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin: 0 0 4px;
+}
+
+.step-number {
+  font-weight: 700;
+}
+
+.step-label {
+  font-weight: 600;
+}
+
+.step-label.missing {
+  color: var(--muted);
+  font-weight: 400;
+  font-style: italic;
+}
+
+.step-meta {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+/* Скриншот и рамка подсветки поверх него. Координаты рамки заданы в процентах,
+   поэтому не зависят от масштаба экрана и размера картинки на странице. */
+.shot {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  line-height: 0;
+}
+
+.shot img {
+  max-width: 100%;
+}
+
+.shot-highlight {
+  position: absolute;
+  box-sizing: border-box;
+  border: 3px solid var(--highlight);
+  border-radius: 6px;
+  box-shadow: 0 0 0 4px rgb(245 158 11 / 0.25);
+  pointer-events: none;
+}
+
+.no-shot {
+  font-size: 13px;
+  color: var(--muted);
+}

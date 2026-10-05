@@ -1,0 +1,97 @@
+// Страница просмотра записи: шаги со скриншотами и подсветкой элемента (FR-2).
+// Пока показывает «сырые» данные шага; шаблонные описания появятся в задаче 4 (FR-3).
+
+const t = (key, substitutions) => chrome.i18n.getMessage(key, substitutions);
+
+const SHOT_PREFIX = "shot:";
+// Запас вокруг элемента, чтобы рамка не перекрывала его край, в CSS-пикселях страницы
+const HIGHLIGHT_PADDING = 4;
+
+const stepsEl = document.getElementById("steps");
+const emptyEl = document.getElementById("empty");
+
+document.title = t("viewerTitle");
+document.getElementById("title").textContent = t("viewerTitle");
+emptyEl.textContent = t("viewerEmpty");
+
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+// Рамка в процентах от видимой области страницы на момент снимка
+function highlightStyle(rect, viewport) {
+  const left = Math.max(0, rect.x - HIGHLIGHT_PADDING);
+  const top = Math.max(0, rect.y - HIGHLIGHT_PADDING);
+  const right = Math.min(viewport.width, rect.x + rect.width + HIGHLIGHT_PADDING);
+  const bottom = Math.min(viewport.height, rect.y + rect.height + HIGHLIGHT_PADDING);
+  return {
+    left: (left / viewport.width) * 100 + "%",
+    top: (top / viewport.height) * 100 + "%",
+    width: ((right - left) / viewport.width) * 100 + "%",
+    height: ((bottom - top) / viewport.height) * 100 + "%",
+  };
+}
+
+function isVisibleInViewport(rect, viewport) {
+  return rect.width > 0 && rect.height > 0 &&
+    rect.x < viewport.width && rect.y < viewport.height &&
+    rect.x + rect.width > 0 && rect.y + rect.height > 0;
+}
+
+function renderShot(step, dataUrl) {
+  if (!dataUrl) {
+    const reason = step.screenshotError ? `: ${step.screenshotError}` : "";
+    return el("p", "no-shot", t("viewerNoScreenshot") + reason);
+  }
+  const wrap = el("div", "shot");
+  const img = el("img");
+  img.src = dataUrl;
+  img.alt = step.label;
+  wrap.append(img);
+
+  if (step.rect && step.viewport && isVisibleInViewport(step.rect, step.viewport)) {
+    const frame = el("div", "shot-highlight");
+    Object.assign(frame.style, highlightStyle(step.rect, step.viewport));
+    wrap.append(frame);
+  }
+  return wrap;
+}
+
+function renderStep(step, index, dataUrl) {
+  const item = el("li", "step");
+
+  const head = el("p", "step-head");
+  head.append(el("span", "step-number", t("viewerStepNumber", [String(index + 1)])));
+  head.append(step.label
+    ? el("span", "step-label", step.label)
+    : el("span", "step-label missing", t("viewerNoLabel")));
+  item.append(head);
+
+  const meta = [step.type];
+  if (step.value !== null && step.value !== undefined) meta.push(`«${step.value}»`);
+  meta.push(t("viewerLabelSource", [step.labelSource]));
+  meta.push(step.page?.url || "");
+  item.append(el("p", "step-meta", meta.filter(Boolean).join(" · ")));
+
+  item.append(renderShot(step, dataUrl));
+  return item;
+}
+
+async function render() {
+  const { steps = [] } = await chrome.storage.local.get("steps");
+  const shotKeys = steps.map((step) => SHOT_PREFIX + step.id);
+  const shots = shotKeys.length ? await chrome.storage.local.get(shotKeys) : {};
+
+  emptyEl.hidden = steps.length > 0;
+  stepsEl.replaceChildren(...steps.map((step, i) => renderStep(step, i, shots[SHOT_PREFIX + step.id])));
+}
+
+render();
+
+// Страница обновляется сама, пока идёт запись
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === "local" && "steps" in changes) render();
+});
