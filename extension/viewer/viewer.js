@@ -87,6 +87,7 @@ function renderStep(step, { number = null, reason = null, dataUrl }) {
   meta.push(t("viewerLabelSource", [step.labelSource]));
   if (step.mergedFrom?.length) meta.push(`+${step.mergedFrom.length}`);
   if (step.element?.path) meta.push(step.element.path);
+  if (step.screenshotSource) meta.push(t("viewerShotSource", [step.screenshotSource]));
   meta.push(step.page?.url || "");
   debug.append(el("p", "step-meta", meta.filter(Boolean).join(" · ")));
   item.append(debug);

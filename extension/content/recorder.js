@@ -286,6 +286,29 @@
   }
 
   // Фаза перехвата: шаг фиксируется, даже если страница останавливает всплытие события
+  // Запасной снимок при раскрытии списка или меню. Снимок по нажатию мыши может опоздать
+  // (лимит Chrome — 2 снимка в секунду), и к его выполнению меню уже закроется.
+  // Тогда для выбора варианта background.js возьмёт этот снимок.
+  const POPUP_SELECTOR = "[role=listbox], [role=menu]";
+  // Пауза, чтобы панель успела отрисоваться (анимация раскрытия)
+  const POPUP_SHOT_DELAY_MS = 250;
+  let popupShotTimer = null;
+
+  function schedulePopupShot() {
+    clearTimeout(popupShotTimer);
+    popupShotTimer = setTimeout(() => send({ type: "capture", kind: "popup" }), POPUP_SHOT_DELAY_MS);
+  }
+
+  function isPopupOpening(mutation) {
+    if (mutation.type === "attributes") return mutation.target.getAttribute("aria-expanded") === "true";
+    return Array.from(mutation.addedNodes).some((node) =>
+      node.nodeType === Node.ELEMENT_NODE && (node.matches(POPUP_SELECTOR) || node.querySelector(POPUP_SELECTOR)));
+  }
+
+  new MutationObserver((mutations) => {
+    if (isRecording && mutations.some(isPopupOpening)) schedulePopupShot();
+  }).observe(document, { subtree: true, childList: true, attributes: true, attributeFilter: ["aria-expanded"] });
+
   document.addEventListener("pointerdown", onPointerDown, true);
   document.addEventListener("click", onClick, true);
   document.addEventListener("change", onChange, true);

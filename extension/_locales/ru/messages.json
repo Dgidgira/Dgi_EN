@@ -59,6 +59,15 @@
       }
     }
   },
+  "viewerShotSource": {
+    "message": "снимок: $SOURCE$",
+    "placeholders": {
+      "source": {
+        "content": "$1",
+        "example": "popup-open"
+      }
+    }
+  },
   "viewerLabelStats": {
     "message": "Описаний с подписью элемента: $WITH$ из $TOTAL$",
     "placeholders": {
