@@ -153,6 +153,37 @@
     return el.tagName === "INPUT" && (el.type === "checkbox" || el.type === "radio");
   }
 
+  // Поля, в которых могут быть данные для скрытия (FR-6): ввод, списки, редактируемые области.
+  // Чекбоксы, переключатели и кнопки данных не содержат.
+  const MASKABLE_SELECTOR = [
+    "input:not([type=hidden]):not([type=checkbox]):not([type=radio])" +
+      ":not([type=button]):not([type=submit]):not([type=reset]):not([type=image])",
+    "textarea",
+    "select",
+    "[role=combobox]",
+    "[role=textbox]",
+    "[contenteditable=''], [contenteditable=true]",
+  ].join(", ");
+  const MAX_FIELDS_PER_STEP = 300;
+
+  const roundRect = (r) => ({ x: Math.round(r.x), y: Math.round(r.y), width: Math.round(r.width), height: Math.round(r.height) });
+
+  // Положение всех видимых полей на момент шага. Значения полей не сохраняются:
+  // только адрес, название и прямоугольник, чтобы закрыть поле на скриншоте.
+  function collectVisibleFields() {
+    const fields = [];
+    for (const field of document.querySelectorAll(MASKABLE_SELECTOR)) {
+      const r = field.getBoundingClientRect();
+      const visible = r.width > 0 && r.height > 0 &&
+        r.right > 0 && r.bottom > 0 && r.left < window.innerWidth && r.top < window.innerHeight &&
+        getComputedStyle(field).visibility !== "hidden";
+      if (!visible) continue;
+      fields.push({ path: elementPath(field), fieldLabel: getFieldLabel(field).text, rect: roundRect(r) });
+      if (fields.length >= MAX_FIELDS_PER_STEP) break;
+    }
+    return fields;
+  }
+
   // aria-expanded на момент нажатия мыши: некоторые компоненты раскрываются уже по mousedown,
   // и к клику значение успевает измениться
   const expandedAtPointerDown = new WeakMap();
@@ -184,6 +215,7 @@
       // Положение элемента в CSS-пикселях относительно видимой области: по нему рисуется подсветка
       rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
       viewport: { width: window.innerWidth, height: window.innerHeight },
+      fields: collectVisibleFields(),
       timestamp: Date.now(),
       ...extra,
     };
