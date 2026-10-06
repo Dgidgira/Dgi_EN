@@ -86,6 +86,20 @@ function ownFrames(step) {
   return visible ? [{ rect: step.rect, number: null }] : [];
 }
 
+// Доля снимка, которую занимает номер шага рядом с рамкой (с запасом на уменьшение снимка в просмотре)
+const BADGE_SPACE = 0.04;
+
+// Где поставить номер шага у рамки, чтобы он не закрывал содержимое элемента:
+// справа (там у полей обычно пусто), иначе слева, иначе сверху, в крайнем случае внутри
+function badgeSide(rect, viewport) {
+  const spaceX = BADGE_SPACE * viewport.width;
+  const spaceY = BADGE_SPACE * viewport.height;
+  if (rect.x + rect.width + spaceX < viewport.width) return "side-right";
+  if (rect.x - spaceX > 0) return "side-left";
+  if (rect.y - spaceY > 0) return "side-top";
+  return "side-inside";
+}
+
 // Размытые области своего скриншота: [{ stepId, index, area }]
 function ownAreas(step) {
   return areasOf(maskedAreas, step.id).map((area, index) => ({ stepId: step.id, index, area }));
@@ -118,7 +132,7 @@ function renderShot(step, dataUrl, frames = ownFrames(step), areas = ownAreas(st
   for (const { rect, number } of frames) {
     const frame = el("div", "shot-highlight");
     Object.assign(frame.style, rectStyle(rect, step.viewport, HIGHLIGHT_PADDING));
-    if (number !== null) frame.append(el("span", "frame-number", String(number)));
+    if (number !== null) frame.append(el("span", `frame-number ${badgeSide(rect, step.viewport)}`, String(number)));
     wrap.append(frame);
   }
 

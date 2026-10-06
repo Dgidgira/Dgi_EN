@@ -305,12 +305,9 @@ h1 {
   font-style: italic;
 }
 
-/* Номер шага на рамке общего скриншота */
+/* Номер шага у рамки общего скриншота: снаружи рамки, чтобы не закрывать текст в поле */
 .frame-number {
   position: absolute;
-  top: 0;
-  left: 0;
-  transform: translate(-35%, -35%);
   min-width: 20px;
   height: 20px;
   padding: 0 4px;
@@ -320,4 +317,26 @@ h1 {
   text-align: center;
   color: #fff;
   background: var(--highlight);
+}
+
+.frame-number.side-right {
+  top: 50%;
+  left: calc(100% + 4px);
+  transform: translateY(-50%);
+}
+
+.frame-number.side-left {
+  top: 50%;
+  right: calc(100% + 4px);
+  transform: translateY(-50%);
+}
+
+.frame-number.side-top {
+  bottom: calc(100% + 4px);
+  left: 0;
+}
+
+.frame-number.side-inside {
+  top: 2px;
+  right: 2px;
 }
