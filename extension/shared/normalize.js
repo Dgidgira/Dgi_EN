@@ -130,6 +130,9 @@ function mergeListChoice(option, steps, drop) {
     label: name.text,
     labelSource: name.source,
     value: option.label,
+    // Поле списка: по нему маскируется выбранное значение (FR-6)
+    fieldPath: trigger.element?.path,
+    fieldLabel: trigger.fieldLabel,
     mergedFrom: absorbed.map((step) => step.id),
   });
   return true;
