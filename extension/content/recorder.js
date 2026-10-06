@@ -275,6 +275,8 @@
       // Положение элемента в CSS-пикселях относительно видимой области: по нему рисуется подсветка
       rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
       viewport: { width: window.innerWidth, height: window.innerHeight },
+      // Прокрутка страницы: по ней рамки шагов переносятся на общий скриншот группы шагов
+      scroll: { x: Math.round(window.scrollX), y: Math.round(window.scrollY) },
       fields: collectVisibleFields(),
       timestamp: Date.now(),
       ...extra,
