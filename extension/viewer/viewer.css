@@ -5,6 +5,8 @@
   --card: #fff;
   --border: #e5e7eb;
   --highlight: #dc2626;
+  --mask: #111827;
+  --target: #2563eb;
 }
 
 body {
@@ -135,4 +137,73 @@ h1 {
   margin: -6px 0 12px;
   font-size: 13px;
   color: var(--highlight);
+}
+
+/* Маскирование полей (FR-6) */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 0 0 12px;
+}
+
+.tool-button {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 10px;
+  font: inherit;
+  font-weight: 600;
+  color: #fff;
+  background: var(--mask);
+  cursor: pointer;
+}
+
+.tool-button[aria-pressed="true"] {
+  background: var(--target);
+}
+
+.tool-button:focus-visible {
+  outline: 3px solid #93c5fd;
+  outline-offset: 2px;
+}
+
+.tool-note {
+  color: var(--muted);
+}
+
+.mask-hint {
+  margin: 0 0 20px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #dbeafe;
+  color: #1e3a8a;
+}
+
+.shot-mask {
+  position: absolute;
+  background: var(--mask);
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+.shot-field {
+  position: absolute;
+  z-index: 1;
+  box-sizing: border-box;
+  padding: 0;
+  border: 2px dashed var(--target);
+  border-radius: 3px;
+  background: rgb(37 99 235 / 0.08);
+  cursor: pointer;
+}
+
+.shot-field:hover,
+.shot-field:focus-visible {
+  background: rgb(37 99 235 / 0.25);
+  outline: none;
+}
+
+.shot-field.masked {
+  border-style: solid;
 }

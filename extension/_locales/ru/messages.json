@@ -334,6 +334,45 @@
   "viewerDroppedHint": {
     "message": "Эти шаги не попадут в инструкцию. Проверьте, не отсеяно ли нужное."
   },
+  "viewerMaskModeStart": {
+    "message": "Скрыть поля"
+  },
+  "viewerMaskModeDone": {
+    "message": "Готово"
+  },
+  "viewerMaskHint": {
+    "message": "Нажмите на поле на любом скриншоте: оно будет скрыто на всех скриншотах, а его значение в описаниях заменится на «***». Повторное нажатие отменяет скрытие. Данные в виде текста вне полей так не скрываются."
+  },
+  "viewerMaskedStats": {
+    "message": "Скрыто полей: $COUNT$",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  },
+  "viewerMaskFieldHide": {
+    "message": "Скрыть поле «$LABEL$»",
+    "placeholders": {
+      "label": {
+        "content": "$1",
+        "example": "Телефон заявителя"
+      }
+    }
+  },
+  "viewerMaskFieldShow": {
+    "message": "Показать поле «$LABEL$»",
+    "placeholders": {
+      "label": {
+        "content": "$1",
+        "example": "Телефон заявителя"
+      }
+    }
+  },
+  "viewerMaskFieldUnnamed": {
+    "message": "без названия"
+  },
   "noiseRepeatedClick": {
     "message": "повторный клик по тому же элементу"
   },
