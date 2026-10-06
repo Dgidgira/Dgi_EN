@@ -180,12 +180,49 @@ h1 {
   color: #1e3a8a;
 }
 
-/* Размытие области поля. Радиус большой, чтобы по размытому тексту нельзя было угадать символы */
+/* Размытие области: без подложки и цветового сдвига, со скруглёнными краями.
+   Радиус достаточный, чтобы по размытому тексту нельзя было угадать символы */
 .shot-mask {
   position: absolute;
-  backdrop-filter: blur(10px) saturate(0.6);
-  background: rgb(255 255 255 / 0.15);
+  backdrop-filter: blur(8px);
+  border-radius: 4px;
   pointer-events: none;
+}
+
+/* Режим выделения областей */
+.shot.drawing {
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.shot.drawing .shot-mask.area {
+  outline: 2px dashed var(--target);
+  outline-offset: -2px;
+}
+
+.area-draft {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px dashed var(--target);
+  border-radius: 4px;
+  background: rgb(37 99 235 / 0.12);
+  pointer-events: none;
+}
+
+.area-remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  font: 600 16px/22px system-ui, sans-serif;
+  color: #fff;
+  background: var(--highlight);
+  cursor: pointer;
+  pointer-events: auto;
 }
 
 .shot-field {

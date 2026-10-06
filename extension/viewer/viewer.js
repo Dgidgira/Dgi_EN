@@ -1,47 +1,61 @@
 // Страница просмотра записи: шаги со скриншотами и подсветкой элемента (FR-2).
 // Перед показом шаги проходят обработку (SQ-1, SQ-2, shared/normalize.js), текст шага —
-// шаблонное описание (FR-3, shared/describe.js). Отмеченные автором поля закрываются на всех
-// скриншотах и в описаниях (FR-6, shared/mask.js).
+// шаблонное описание (FR-3, shared/describe.js). Отмеченные автором поля размываются на всех
+// скриншотах и скрываются в описаниях; произвольные области размываются на своём скриншоте
+// (FR-6, shared/mask.js).
 
 const t = (key, substitutions) => chrome.i18n.getMessage(key, substitutions);
 
 const SHOT_PREFIX = "shot:";
 // Запас вокруг элемента, чтобы рамка не перекрывала его край, в CSS-пикселях страницы
 const HIGHLIGHT_PADDING = 4;
-// Запас маски вокруг поля: закрываем и рамку поля, чтобы край текста не выглядывал
-const MASK_PADDING = 2;
+// Запас размытия вокруг поля: захватываем рамку поля, чтобы край текста не выглядывал
+const MASK_PADDING = 1;
 
 const stepsEl = document.getElementById("steps");
 const emptyEl = document.getElementById("empty");
 const statsEl = document.getElementById("stats");
 const droppedEl = document.getElementById("dropped");
 const droppedListEl = document.getElementById("dropped-steps");
-const maskModeEl = document.getElementById("mask-mode");
+const fieldModeEl = document.getElementById("mask-mode");
+const areaModeEl = document.getElementById("area-mode");
 const maskCountEl = document.getElementById("mask-count");
 const maskHintEl = document.getElementById("mask-hint");
 
-// Отмеченные поля хранятся в chrome.storage.local, ключ "maskedFields"; режим отметки — только на этой странице
+// Отмеченные поля (ключ "maskedFields") и области (ключ "maskedAreas") хранятся в chrome.storage.local.
+// Режим работы — только на этой странице: null, "fields" (скрытие полей) или "areas" (выделение областей).
 let masks = [];
-let maskMode = false;
+let maskedAreas = {};
+let mode = null;
 
 document.title = t("viewerTitle");
 document.getElementById("title").textContent = t("viewerTitle");
 emptyEl.textContent = t("viewerEmpty");
 document.getElementById("dropped-title").textContent = t("viewerDroppedTitle");
 document.getElementById("dropped-hint").textContent = t("viewerDroppedHint");
-maskHintEl.textContent = t("viewerMaskHint");
-
-maskModeEl.addEventListener("click", () => {
-  maskMode = !maskMode;
-  document.body.classList.toggle("mask-mode", maskMode);
+function setMode(next) {
+  mode = mode === next ? null : next;
   render();
-});
+}
+
+fieldModeEl.addEventListener("click", () => setMode("fields"));
+areaModeEl.addEventListener("click", () => setMode("areas"));
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
   if (className) node.className = className;
   if (text !== undefined) node.textContent = text;
   return node;
+}
+
+// Прямоугольник в долях снимка (0..1) — в проценты для CSS
+function fractionStyle(rect) {
+  return {
+    left: rect.x * 100 + "%",
+    top: rect.y * 100 + "%",
+    width: rect.width * 100 + "%",
+    height: rect.height * 100 + "%",
+  };
 }
 
 // Прямоугольник в процентах от видимой области страницы на момент снимка
@@ -73,26 +87,78 @@ function renderShot(step, dataUrl) {
   const img = el("img");
   img.src = dataUrl;
   img.alt = step.label;
+  img.draggable = false;
   wrap.append(img);
 
-  if (!step.viewport) return wrap;
-
-  // Маски поверх снимка: сильное размытие области. При выгрузке размытие будет
-  // впечатано в саму картинку
-  for (const rect of maskedRects(step, masks)) {
-    const mask = el("div", "shot-mask");
-    Object.assign(mask.style, rectStyle(rect, step.viewport, MASK_PADDING));
-    wrap.append(mask);
+  // Размытие поверх снимка. При выгрузке оно будет впечатано в саму картинку
+  if (step.viewport) {
+    for (const rect of maskedRects(step, masks)) {
+      const mask = el("div", "shot-mask");
+      Object.assign(mask.style, rectStyle(rect, step.viewport, MASK_PADDING));
+      wrap.append(mask);
+    }
   }
+  areasOf(maskedAreas, step.id).forEach((area, index) => wrap.append(renderArea(step.id, area, index)));
 
-  if (step.rect && isVisibleInViewport(step.rect, step.viewport)) {
+  if (step.viewport && step.rect && isVisibleInViewport(step.rect, step.viewport)) {
     const frame = el("div", "shot-highlight");
     Object.assign(frame.style, rectStyle(step.rect, step.viewport, HIGHLIGHT_PADDING));
     wrap.append(frame);
   }
 
-  if (maskMode) wrap.append(...renderFieldTargets(step));
+  if (mode === "fields" && step.viewport) wrap.append(...renderFieldTargets(step));
+  if (mode === "areas") enableAreaDrawing(wrap, img, step.id);
   return wrap;
+}
+
+// Размытая произвольная область; в режиме выделения у неё есть кнопка удаления
+function renderArea(stepId, area, index) {
+  const mask = el("div", "shot-mask area");
+  Object.assign(mask.style, fractionStyle(area));
+  if (mode === "areas") {
+    const remove = el("button", "area-remove", "×");
+    remove.type = "button";
+    remove.title = t("viewerMaskAreaRemove");
+    remove.setAttribute("aria-label", remove.title);
+    remove.addEventListener("click", async () => {
+      await chrome.storage.local.set({ maskedAreas: removeArea(maskedAreas, stepId, index) });
+    });
+    mask.append(remove);
+  }
+  return mask;
+}
+
+// Выделение прямоугольника мышью на снимке. Координаты — в долях размера снимка
+function enableAreaDrawing(wrap, img, stepId) {
+  wrap.classList.add("drawing");
+  wrap.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0 || event.target.closest(".area-remove")) return;
+    event.preventDefault();
+    const box = img.getBoundingClientRect();
+    const toPoint = (e) => ({ x: (e.clientX - box.left) / box.width, y: (e.clientY - box.top) / box.height });
+    const start = toPoint(event);
+    const draft = el("div", "area-draft");
+    wrap.append(draft);
+    wrap.setPointerCapture(event.pointerId);
+
+    const onMove = (e) => {
+      const area = areaFromPoints(start, toPoint(e));
+      draft.hidden = !area;
+      if (area) Object.assign(draft.style, fractionStyle(area));
+    };
+    const onEnd = async (e) => {
+      wrap.removeEventListener("pointermove", onMove);
+      wrap.removeEventListener("pointerup", onEnd);
+      wrap.removeEventListener("pointercancel", onEnd);
+      draft.remove();
+      const area = e.type === "pointerup" ? areaFromPoints(start, toPoint(e)) : null;
+      if (area) await chrome.storage.local.set({ maskedAreas: addArea(maskedAreas, stepId, area) });
+    };
+    draft.hidden = true;
+    wrap.addEventListener("pointermove", onMove);
+    wrap.addEventListener("pointerup", onEnd);
+    wrap.addEventListener("pointercancel", onEnd);
+  });
 }
 
 // Режим скрытия: пунктирные области всех полей на снимке; клик скрывает поле на всех снимках
@@ -159,15 +225,23 @@ function renderStats(steps, dropped) {
 }
 
 function renderMaskToolbar() {
-  maskModeEl.textContent = t(maskMode ? "viewerMaskModeDone" : "viewerMaskModeStart");
-  maskModeEl.setAttribute("aria-pressed", String(maskMode));
-  maskHintEl.hidden = !maskMode;
-  maskCountEl.textContent = t("viewerMaskedStats", [String(masks.length)]);
+  fieldModeEl.textContent = t(mode === "fields" ? "viewerMaskModeDone" : "viewerMaskModeStart");
+  fieldModeEl.setAttribute("aria-pressed", String(mode === "fields"));
+  areaModeEl.textContent = t(mode === "areas" ? "viewerMaskModeDone" : "viewerMaskAreaStart");
+  areaModeEl.setAttribute("aria-pressed", String(mode === "areas"));
+  maskHintEl.hidden = !mode;
+  maskHintEl.textContent = mode === "areas" ? t("viewerMaskAreaHint") : t("viewerMaskHint");
+  maskCountEl.textContent = [
+    t("viewerMaskedStats", [String(masks.length)]),
+    t("viewerMaskedAreasStats", [String(countAreas(maskedAreas))]),
+  ].join(" · ");
 }
 
 async function render() {
-  const { steps: rawSteps = [], maskedFields = [] } = await chrome.storage.local.get(["steps", "maskedFields"]);
+  const stored = await chrome.storage.local.get(["steps", "maskedFields", "maskedAreas"]);
+  const { steps: rawSteps = [], maskedFields = [] } = stored;
   masks = maskedFields;
+  maskedAreas = stored.maskedAreas || {};
   renderMaskToolbar();
   const { steps, dropped } = normalizeSteps(rawSteps);
   const shotKeys = rawSteps.map((step) => SHOT_PREFIX + step.id);
@@ -187,5 +261,5 @@ render();
 
 // Страница обновляется сама, пока идёт запись
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === "local" && ("steps" in changes || "maskedFields" in changes)) render();
+  if (areaName === "local" && ["steps", "maskedFields", "maskedAreas"].some((key) => key in changes)) render();
 });

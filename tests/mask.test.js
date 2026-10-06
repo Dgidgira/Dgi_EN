@@ -75,6 +75,31 @@ const merged = normalizeSteps([trigger, option]).steps[0];
 const addressMasks = toggleMask([], { path: "#ac-address", fieldLabel: "Адрес происшествия" }, FORM);
 expect("выбор в отмеченном списке скрыт", maskStep(merged, addressMasks).value, "***");
 
+// --- Полосы видимых частей склеиваются
+expect("полосы друг под другом → один прямоугольник", mergeRects([
+  { x: 10, y: 100, width: 50, height: 5 }, { x: 10, y: 105, width: 50, height: 5 }, { x: 11, y: 110, width: 49, height: 5 },
+]), [{ x: 10, y: 100, width: 50, height: 15 }]);
+expect("полосы разной ширины не склеиваются", mergeRects([
+  { x: 10, y: 100, width: 50, height: 5 }, { x: 10, y: 105, width: 120, height: 5 },
+]).length, 2);
+
+// --- Произвольные области
+expect("область по двум углам в любом порядке", areaFromPoints({ x: 0.6, y: 0.5 }, { x: 0.2, y: 0.1 }),
+  { x: 0.2, y: 0.1, width: 0.4, height: 0.4 });
+expect("область обрезается краями снимка", areaFromPoints({ x: -0.2, y: 0.9 }, { x: 0.3, y: 1.4 }),
+  { x: 0, y: 0.9, width: 0.3, height: 0.1 });
+expect("случайный щелчок не создаёт область", areaFromPoints({ x: 0.5, y: 0.5 }, { x: 0.501, y: 0.6 }), null);
+
+let areas = addArea({}, "s1", { x: 0.1, y: 0.1, width: 0.2, height: 0.2 });
+areas = addArea(areas, "s1", { x: 0.5, y: 0.5, width: 0.1, height: 0.1 });
+areas = addArea(areas, "s2", { x: 0, y: 0, width: 1, height: 0.1 });
+expect("области привязаны к своему скриншоту", areasOf(areas, "s1").length, 2);
+expect("на других скриншотах областей нет", areasOf(areas, "s3"), []);
+expect("подсчёт областей", countAreas(areas), 3);
+areas = removeArea(areas, "s1", 0);
+expect("удаление нужной области", areasOf(areas, "s1"), [{ x: 0.5, y: 0.5, width: 0.1, height: 0.1 }]);
+expect("последняя область удаляется вместе с ключом", Object.keys(removeArea(areas, "s2", 0)), ["s1"]);
+
 const result = failures.length
   ? `ПРОВАЛ: ${failures.length} из ${checks}\n` + failures.join("\n")
   : `OK: ${checks} проверок пройдено`;

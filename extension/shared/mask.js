@@ -24,7 +24,59 @@ function isFieldMasked(field, masks, fieldPageKey) {
 // Видимые части поля на скриншоте. Если поле частично закрыто раскрытым списком или меню,
 // recorder.js сохраняет только незакрытые части (visibleRects; пустой массив — поле закрыто целиком).
 function visibleFieldRects(field) {
-  return field.visibleRects || [field.rect];
+  return field.visibleRects ? mergeRects(field.visibleRects) : [field.rect];
+}
+
+// Склеивает полосы видимых частей поля (по строкам сетки) в цельные прямоугольники,
+// если они стоят друг под другом и совпадают по ширине (с допуском на округление в 1 px)
+function mergeRects(rects) {
+  const sorted = [...rects].sort((a, b) => a.x - b.x || a.y - b.y);
+  const merged = [];
+  for (const rect of sorted) {
+    const last = merged.find((m) =>
+      Math.abs(m.x - rect.x) <= 1 && Math.abs(m.width - rect.width) <= 1 && Math.abs(m.y + m.height - rect.y) <= 1);
+    if (last) last.height = rect.y + rect.height - last.y;
+    else merged.push({ ...rect });
+  }
+  return merged;
+}
+
+// --- Произвольные области (FR-6): прямоугольник на одном скриншоте, в долях размера снимка (0..1).
+// Хранятся в chrome.storage.local, ключ "maskedAreas": { [id шага]: [{ x, y, width, height }] }.
+
+// Слишком маленькая область — скорее всего, случайный щелчок
+const MIN_AREA_FRACTION = 0.005;
+
+const clamp01 = (value) => Math.min(1, Math.max(0, value));
+const round4 = (value) => Math.round(value * 10000) / 10000;
+
+// Область по двум углам, выделенным мышью; null — слишком маленькая
+function areaFromPoints(a, b) {
+  const x1 = clamp01(Math.min(a.x, b.x));
+  const y1 = clamp01(Math.min(a.y, b.y));
+  const x2 = clamp01(Math.max(a.x, b.x));
+  const y2 = clamp01(Math.max(a.y, b.y));
+  if (x2 - x1 < MIN_AREA_FRACTION || y2 - y1 < MIN_AREA_FRACTION) return null;
+  return { x: round4(x1), y: round4(y1), width: round4(x2 - x1), height: round4(y2 - y1) };
+}
+
+function areasOf(maskedAreas, stepId) {
+  return maskedAreas[stepId] || [];
+}
+
+function addArea(maskedAreas, stepId, area) {
+  return { ...maskedAreas, [stepId]: [...areasOf(maskedAreas, stepId), area] };
+}
+
+function removeArea(maskedAreas, stepId, index) {
+  const rest = areasOf(maskedAreas, stepId).filter((_, i) => i !== index);
+  const next = { ...maskedAreas, [stepId]: rest };
+  if (!rest.length) delete next[stepId];
+  return next;
+}
+
+function countAreas(maskedAreas) {
+  return Object.values(maskedAreas).reduce((sum, areas) => sum + areas.length, 0);
 }
 
 // Прямоугольники полей, которые нужно скрыть на скриншоте шага

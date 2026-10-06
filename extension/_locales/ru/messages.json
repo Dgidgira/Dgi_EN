@@ -373,6 +373,24 @@
   "viewerMaskFieldUnnamed": {
     "message": "без названия"
   },
+  "viewerMaskAreaStart": {
+    "message": "Скрыть область"
+  },
+  "viewerMaskAreaHint": {
+    "message": "Выделите мышью прямоугольник на нужном скриншоте: область будет размыта только на этом скриншоте. Подходит для данных вне полей (таблицы, заголовки). Чтобы убрать размытие, нажмите × на области."
+  },
+  "viewerMaskedAreasStats": {
+    "message": "Скрыто областей: $COUNT$",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "1"
+      }
+    }
+  },
+  "viewerMaskAreaRemove": {
+    "message": "Убрать размытие области"
+  },
   "noiseRepeatedClick": {
     "message": "повторный клик по тому же элементу"
   },
