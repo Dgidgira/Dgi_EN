@@ -106,3 +106,33 @@ h1 {
   font-size: 13px;
   color: var(--muted);
 }
+
+/* Отсеянные шаги (SQ-2): приглушены, скриншот уменьшен */
+.dropped-section {
+  margin-top: 32px;
+}
+
+.dropped-section > summary {
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dropped-hint {
+  color: var(--muted);
+}
+
+.step.dropped {
+  opacity: 0.75;
+  border-style: dashed;
+}
+
+.step.dropped .shot {
+  max-width: 360px;
+}
+
+.step-reason {
+  margin: -6px 0 12px;
+  font-size: 13px;
+  color: var(--highlight);
+}

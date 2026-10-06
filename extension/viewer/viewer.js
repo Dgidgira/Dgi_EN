@@ -1,5 +1,6 @@
 // Страница просмотра записи: шаги со скриншотами и подсветкой элемента (FR-2).
-// Текст шага — шаблонное описание (FR-3, shared/describe.js).
+// Перед показом шаги проходят обработку (SQ-1, SQ-2, shared/normalize.js), текст шага —
+// шаблонное описание (FR-3, shared/describe.js).
 
 const t = (key, substitutions) => chrome.i18n.getMessage(key, substitutions);
 
@@ -10,10 +11,14 @@ const HIGHLIGHT_PADDING = 4;
 const stepsEl = document.getElementById("steps");
 const emptyEl = document.getElementById("empty");
 const statsEl = document.getElementById("stats");
+const droppedEl = document.getElementById("dropped");
+const droppedListEl = document.getElementById("dropped-steps");
 
 document.title = t("viewerTitle");
 document.getElementById("title").textContent = t("viewerTitle");
 emptyEl.textContent = t("viewerEmpty");
+document.getElementById("dropped-title").textContent = t("viewerDroppedTitle");
+document.getElementById("dropped-hint").textContent = t("viewerDroppedHint");
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -61,14 +66,16 @@ function renderShot(step, dataUrl) {
   return wrap;
 }
 
-function renderStep(step, index, dataUrl) {
-  const item = el("li", "step");
+// number — номер шага в инструкции; у отсеянного шага номера нет, вместо него причина отсева
+function renderStep(step, { number = null, reason = null, dataUrl }) {
+  const item = el("li", reason ? "step dropped" : "step");
   const description = describeStep(step);
 
   const head = el("p", "step-head");
-  head.append(el("span", "step-number", t("viewerStepNumber", [String(index + 1)])));
+  if (number !== null) head.append(el("span", "step-number", t("viewerStepNumber", [String(number)])));
   head.append(el("span", "step-text", description.text));
   item.append(head);
+  if (reason) item.append(el("p", "step-reason", t(reason)));
 
   item.append(renderShot(step, dataUrl));
 
@@ -78,6 +85,8 @@ function renderStep(step, index, dataUrl) {
   const meta = [step.type, step.label ? `«${step.label}»` : ""];
   if (step.value !== null && step.value !== undefined) meta.push(`= «${step.value}»`);
   meta.push(t("viewerLabelSource", [step.labelSource]));
+  if (step.mergedFrom?.length) meta.push(`+${step.mergedFrom.length}`);
+  if (step.element?.path) meta.push(step.element.path);
   meta.push(step.page?.url || "");
   debug.append(el("p", "step-meta", meta.filter(Boolean).join(" · ")));
   item.append(debug);
@@ -85,21 +94,30 @@ function renderStep(step, index, dataUrl) {
   return item;
 }
 
-// Сводка для SQ-5: у скольких шагов описание удалось построить с подписью элемента
-function renderStats(steps) {
+// Сводка: SQ-5 — у скольких шагов описание построено с подписью элемента; SQ-2 — сколько отсеяно
+function renderStats(steps, dropped) {
   const withLabel = steps.filter((step) => describeStep(step).usesLabel).length;
-  statsEl.textContent = t("viewerLabelStats", [String(withLabel), String(steps.length)]);
-  statsEl.hidden = steps.length === 0;
+  statsEl.textContent = [
+    t("viewerLabelStats", [String(withLabel), String(steps.length)]),
+    t("viewerDroppedStats", [String(dropped.length)]),
+  ].join(" · ");
+  statsEl.hidden = steps.length + dropped.length === 0;
 }
 
 async function render() {
-  const { steps = [] } = await chrome.storage.local.get("steps");
-  const shotKeys = steps.map((step) => SHOT_PREFIX + step.id);
+  const { steps: rawSteps = [] } = await chrome.storage.local.get("steps");
+  const { steps, dropped } = normalizeSteps(rawSteps);
+  const shotKeys = rawSteps.map((step) => SHOT_PREFIX + step.id);
   const shots = shotKeys.length ? await chrome.storage.local.get(shotKeys) : {};
+  const shotOf = (step) => shots[SHOT_PREFIX + step.id];
 
-  emptyEl.hidden = steps.length > 0;
-  renderStats(steps);
-  stepsEl.replaceChildren(...steps.map((step, i) => renderStep(step, i, shots[SHOT_PREFIX + step.id])));
+  emptyEl.hidden = rawSteps.length > 0;
+  renderStats(steps, dropped);
+  stepsEl.replaceChildren(...steps.map((step, i) => renderStep(step, { number: i + 1, dataUrl: shotOf(step) })));
+
+  // Раздел сохраняет состояние «раскрыт / свёрнут» при обновлении во время записи
+  droppedEl.hidden = dropped.length === 0;
+  droppedListEl.replaceChildren(...dropped.map(({ step, reason }) => renderStep(step, { reason, dataUrl: shotOf(step) })));
 }
 
 render();
