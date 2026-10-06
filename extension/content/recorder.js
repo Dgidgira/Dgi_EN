@@ -43,36 +43,105 @@
     }
   });
 
+  // Значки-стрелки раскрывающихся элементов («Действия ▾») в подпись не берём
+  const ARROW_GLYPHS = /[▾▼▿▴▲⌄⏷]/g;
+
   function normalizeText(text) {
-    const clean = (text || "").replace(/\s+/g, " ").trim();
+    const clean = (text || "").replace(ARROW_GLYPHS, " ").replace(/\s+/g, " ").trim();
     return clean.length > MAX_LABEL_LENGTH ? clean.slice(0, MAX_LABEL_LENGTH - 1) + "…" : clean;
   }
 
-  function textOfIds(ids) {
+  // Текст элементов из aria-labelledby. Элементы внутри самого el пропускаем: так в Angular Material
+  // mat-select ссылается и на название поля, и на своё текущее значение («Тип происшествия — выберите —»).
+  function textOfIds(ids, el) {
     return ids
       .split(/\s+/)
-      .map((id) => document.getElementById(id)?.innerText || "")
+      .map((id) => document.getElementById(id))
+      .filter((ref) => ref && !el.contains(ref))
+      .map((ref) => ref.innerText)
       .join(" ");
+  }
+
+  function isFormControl(el) {
+    const role = el.getAttribute("role");
+    return isTextInput(el) || isCheckable(el) || el.tagName === "SELECT" ||
+      role === "combobox" || role === "textbox" || role === "listbox";
+  }
+
+  // Надпись рядом с полем, не связанная с ним технически (частый случай в реальных системах):
+  // ближайший предшествующий label или элемент с "label" в классе, в пределах трёх уровней предков.
+  function nearbyLabelText(el) {
+    let ancestor = el.parentElement;
+    for (let level = 0; ancestor && level < 3; level++, ancestor = ancestor.parentElement) {
+      const found = Array.from(ancestor.querySelectorAll("label, [class*=label]")).filter((candidate) =>
+        !candidate.contains(el) && !el.contains(candidate) &&
+        (candidate.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING) &&
+        !(candidate.tagName === "LABEL" && candidate.control && candidate.control !== el) &&
+        !candidate.querySelector("input, select, textarea, button"));
+      if (found.length) return found[found.length - 1].innerText;
+    }
+    return "";
+  }
+
+  function firstText(candidates) {
+    for (const [source, read] of candidates) {
+      const text = normalizeText(read());
+      if (text) return { text, source };
+    }
+    return { text: "", source: "none" };
+  }
+
+  // Название поля без собственного текста элемента. Для выпадающего списка собственный текст —
+  // это текущее значение («— выберите —»), а нужно название («Тип происшествия»).
+  function getFieldLabel(el) {
+    return firstText([
+      ["aria-labelledby", () => el.getAttribute("aria-labelledby") && textOfIds(el.getAttribute("aria-labelledby"), el)],
+      ["aria-label", () => el.getAttribute("aria-label")],
+      ["label", () => el.labels && Array.from(el.labels).map((l) => l.innerText).join(" ")],
+      ["nearby-label", () => nearbyLabelText(el)],
+    ]);
   }
 
   // Подпись элемента для шаблонного описания (FR-3, SQ-5).
   // Возвращает текст и источник, чтобы в спайке посчитать, откуда берутся подписи.
   function getLabel(el) {
-    const candidates = [
-      ["aria-labelledby", () => el.getAttribute("aria-labelledby") && textOfIds(el.getAttribute("aria-labelledby"))],
+    return firstText([
+      ["aria-labelledby", () => el.getAttribute("aria-labelledby") && textOfIds(el.getAttribute("aria-labelledby"), el)],
       ["aria-label", () => el.getAttribute("aria-label")],
       ["label", () => el.labels && Array.from(el.labels).map((l) => l.innerText).join(" ")],
       ["text", () => (isTextInput(el) || el.tagName === "SELECT" ? "" : el.innerText || el.value)],
       ["title", () => el.getAttribute("title")],
       ["placeholder", () => el.getAttribute("placeholder")],
       ["alt", () => el.getAttribute("alt")],
+      // Надпись рядом берём только для полей: у кнопок без подписи она чаще относится к соседнему полю
+      ["nearby-label", () => (isFormControl(el) ? nearbyLabelText(el) : "")],
       ["name", () => el.getAttribute("name")],
-    ];
-    for (const [source, read] of candidates) {
-      const text = normalizeText(read());
-      if (text) return { text, source };
+    ]);
+  }
+
+  // Короткий «адрес» элемента на странице: по нему обработка шагов узнаёт одно и то же поле
+  function elementPath(el) {
+    const parts = [];
+    let node = el;
+    while (node && node.nodeType === Node.ELEMENT_NODE && parts.length < 8) {
+      if (node.id) {
+        parts.unshift("#" + CSS.escape(node.id));
+        break;
+      }
+      let index = 1;
+      for (let sibling = node.previousElementSibling; sibling; sibling = sibling.previousElementSibling) {
+        if (sibling.tagName === node.tagName) index++;
+      }
+      parts.unshift(`${node.tagName.toLowerCase()}:nth-of-type(${index})`);
+      node = node.parentElement;
     }
-    return { text: "", source: "none" };
+    return parts.join(" > ");
+  }
+
+  // Всплывающий список или меню, внутри которого находится элемент (вариант списка, пункт меню)
+  function popupContainer(el) {
+    const container = el.closest("[role=listbox], [role=menu], [role=tree], [role=grid]");
+    return container ? { role: container.getAttribute("role"), id: container.id || null } : null;
   }
 
   function isTextInput(el) {
@@ -84,19 +153,32 @@
     return el.tagName === "INPUT" && (el.type === "checkbox" || el.type === "radio");
   }
 
+  // aria-expanded на момент нажатия мыши: некоторые компоненты раскрываются уже по mousedown,
+  // и к клику значение успевает измениться
+  const expandedAtPointerDown = new WeakMap();
+
   function buildStep(type, el, value, extra = {}) {
     const label = getLabel(el);
+    const fieldLabel = getFieldLabel(el);
     const rect = el.getBoundingClientRect();
     return {
       id: crypto.randomUUID(),
       type,
       label: label.text,
       labelSource: label.source,
+      fieldLabel: fieldLabel.text,
+      fieldLabelSource: fieldLabel.source,
       value,
       element: {
         tag: el.tagName.toLowerCase(),
         inputType: el.tagName === "INPUT" ? el.type : null,
         role: el.getAttribute("role"),
+        path: elementPath(el),
+        className: normalizeText(typeof el.className === "string" ? el.className : ""),
+        ariaHaspopup: el.getAttribute("aria-haspopup"),
+        ariaExpanded: expandedAtPointerDown.has(el) ? expandedAtPointerDown.get(el) : el.getAttribute("aria-expanded"),
+        ariaControls: el.getAttribute("aria-controls") || el.getAttribute("aria-owns"),
+        container: popupContainer(el),
       },
       page: { url: location.href, title: document.title },
       // Положение элемента в CSS-пикселях относительно видимой области: по нему рисуется подсветка
@@ -135,13 +217,18 @@
   // после клика страница может уже смениться. background.js привяжет снимок к шагу.
   function onPointerDown(event) {
     if (!isRecording || !event.isTrusted || event.button !== 0) return;
-    if (resolveClickTarget(event.target)) send({ type: "capture" });
+    const el = resolveClickTarget(event.target);
+    if (!el) return;
+    expandedAtPointerDown.set(el, el.getAttribute("aria-expanded"));
+    send({ type: "capture" });
   }
 
   function onClick(event) {
     if (!isRecording || !event.isTrusted) return;
     const el = resolveClickTarget(event.target);
-    if (el) sendStep(buildStep("click", el, null));
+    if (!el) return;
+    sendStep(buildStep("click", el, null));
+    expandedAtPointerDown.delete(el);
   }
 
   // Нестандартные элементы (div, span) без роли: считаем кликабельными, если у них курсор-рука.
