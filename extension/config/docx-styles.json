@@ -1,0 +1,40 @@
+{
+  "fonts": {
+    "body": "Calibri",
+    "headings": "Calibri"
+  },
+  "sizesPt": {
+    "title": 20,
+    "heading": 13,
+    "body": 11,
+    "meta": 9
+  },
+  "colors": {
+    "title": "1F2937",
+    "heading": "1F2937",
+    "body": "1F2937",
+    "meta": "6B7280",
+    "stepNumber": "DC2626"
+  },
+  "page": {
+    "size": "A4",
+    "orientation": "portrait",
+    "marginsMm": {
+      "top": 20,
+      "right": 15,
+      "bottom": 20,
+      "left": 20
+    }
+  },
+  "spacing": {
+    "afterParagraphPt": 4,
+    "afterImagePt": 14,
+    "beforeHeadingPt": 12,
+    "lineSpacing": 1.15
+  },
+  "image": {
+    "maxWidthPercent": 100,
+    "border": true,
+    "borderColor": "D1D5DB"
+  }
+}
