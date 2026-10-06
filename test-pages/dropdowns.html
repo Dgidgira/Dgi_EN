@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Тестовая страница: выпадающие списки</title>
+  <!--
+    Синтетическая страница для проверки выпадающих списков (SQ-1, MC-6). Все данные вымышленные.
+    Разметка повторяет итоговый DOM компонентов Angular Material (mat-select, mat-autocomplete, mat-menu):
+    роли и aria-атрибуты на тех же элементах, панели вариантов в оверлее в конце body.
+    Сам Angular не подключается: для проверки записи важна только разметка.
+  -->
+  <style>
+    body { font: 15px system-ui, sans-serif; max-width: 640px; margin: 24px auto; padding: 0 16px; color: #1f2937; }
+    section { margin: 0 0 28px; padding: 16px; border: 1px solid #d1d5db; border-radius: 8px; }
+    h2 { margin: 0 0 12px; font-size: 16px; }
+    .hint { margin: 0 0 12px; font-size: 13px; color: #6b7280; }
+    label, .field-label { display: block; margin: 0 0 4px; font-size: 13px; color: #4b5563; }
+
+    /* Поле в стиле mat-form-field */
+    .mat-mdc-select, .mat-mdc-input, .custom-select {
+      display: flex; justify-content: space-between; align-items: center;
+      width: 280px; padding: 8px 10px; border: 1px solid #9ca3af; border-radius: 4px; background: #fff; font: inherit;
+    }
+    .mat-mdc-select, .custom-select { cursor: pointer; }
+    .mat-mdc-input { display: block; box-sizing: border-box; }
+
+    /* Оверлей: панели открываются поверх страницы, как cdk-overlay-container */
+    .cdk-overlay-container { position: absolute; top: 0; left: 0; width: 0; height: 0; }
+    .cdk-overlay-backdrop { position: fixed; inset: 0; }
+    .overlay-panel {
+      position: absolute; min-width: 280px; padding: 4px 0; background: #fff;
+      border-radius: 4px; box-shadow: 0 4px 16px rgb(0 0 0 / 0.2);
+    }
+    .mat-mdc-option, .mat-mdc-menu-item {
+      display: block; width: 100%; box-sizing: border-box; padding: 10px 16px;
+      border: none; background: none; font: inherit; text-align: left; cursor: pointer;
+    }
+    .mat-mdc-option:hover, .mat-mdc-menu-item:hover, .custom-option:hover { background: #f3f4f6; }
+
+    .mat-mdc-button { padding: 8px 16px; border: 1px solid #9ca3af; border-radius: 4px; background: #fff; font: inherit; cursor: pointer; }
+
+    /* Самописный список без ARIA */
+    .custom-wrap { position: relative; }
+    .custom-options { position: absolute; z-index: 1; width: 280px; background: #fff; border-radius: 4px; box-shadow: 0 4px 16px rgb(0 0 0 / 0.2); }
+    .custom-option { padding: 10px 16px; cursor: pointer; }
+
+    #log { color: #6b7280; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <h1>Выпадающие списки (тест)</h1>
+  <p id="log"></p>
+
+  <section>
+    <h2>1. mat-select</h2>
+    <p class="hint">Название поля связано через aria-labelledby, в которое входит и текущее значение.</p>
+    <div class="mat-mdc-form-field">
+      <label id="ff-label-type" for="sel-type" class="mdc-floating-label">Тип происшествия</label>
+      <mat-select id="sel-type" class="mat-mdc-select" role="combobox" tabindex="0"
+                  aria-haspopup="listbox" aria-expanded="false" aria-labelledby="ff-label-type sel-type-value">
+        <span id="sel-type-value" class="mat-mdc-select-value-text">— выберите —</span>
+        <span class="mat-mdc-select-arrow" aria-hidden="true">▾</span>
+      </mat-select>
+    </div>
+  </section>
+
+  <section>
+    <h2>2. mat-autocomplete</h2>
+    <p class="hint">Начните вводить «ул», затем выберите вариант из подсказок.</p>
+    <div class="mat-mdc-form-field">
+      <label id="ff-label-address" for="ac-address">Адрес происшествия</label>
+      <input id="ac-address" class="mat-mdc-input" type="text" autocomplete="off"
+             role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false">
+    </div>
+  </section>
+
+  <section>
+    <h2>3. mat-menu</h2>
+    <button id="menu-trigger" type="button" class="mat-mdc-button" aria-haspopup="menu" aria-expanded="false">Действия ▾</button>
+  </section>
+
+  <section>
+    <h2>4. Самописный список без ARIA</h2>
+    <p class="hint">Только div и span: ни ролей, ни связанного label. Так бывает в самописных компонентах.</p>
+    <div class="custom-field">
+      <span class="field-label">Служба реагирования</span>
+      <div class="custom-wrap">
+        <div class="custom-select" id="custom-service"><span class="custom-value">— выберите —</span><span>▾</span></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="cdk-overlay-container" id="overlay"></div>
+
+  <script>
+    // Страница ничего не отправляет: только переключает панели и показывает выбранное значение
+    const log = (text) => { document.getElementById("log").textContent = text; };
+    const overlay = document.getElementById("overlay");
+    let closeCurrent = null;
+
+    // Открывает панель под элементом в оверлее (как CDK Overlay), с прозрачной подложкой для закрытия
+    function openPanel(anchor, role, id, items, itemTag, itemClass, itemRole, onPick) {
+      closePanel();
+      const backdrop = document.createElement("div");
+      backdrop.className = "cdk-overlay-backdrop";
+      const panel = document.createElement("div");
+      panel.className = "overlay-panel";
+      panel.id = id;
+      panel.setAttribute("role", role);
+      const box = anchor.getBoundingClientRect();
+      panel.style.left = box.left + window.scrollX + "px";
+      panel.style.top = box.bottom + window.scrollY + 4 + "px";
+
+      items.forEach((text, i) => {
+        const item = document.createElement(itemTag);
+        item.className = itemClass;
+        item.id = id + "-item-" + i;
+        item.setAttribute("role", itemRole);
+        if (itemTag === "button") item.type = "button";
+        const span = document.createElement("span");
+        span.className = "mdc-list-item__primary-text";
+        span.textContent = text;
+        item.append(span);
+        item.addEventListener("click", () => { onPick(text); closePanel(); });
+        panel.append(item);
+      });
+
+      overlay.append(backdrop, panel);
+      backdrop.addEventListener("click", closePanel);
+      closeCurrent = () => { backdrop.remove(); panel.remove(); };
+      return panel;
+    }
+
+    function closePanel() {
+      if (closeCurrent) closeCurrent();
+      closeCurrent = null;
+      document.querySelectorAll("[aria-expanded=true]").forEach((el) => {
+        el.setAttribute("aria-expanded", "false");
+        el.removeAttribute("aria-controls");
+      });
+    }
+
+    // 1. mat-select
+    const select = document.getElementById("sel-type");
+    select.addEventListener("click", () => {
+      if (select.getAttribute("aria-expanded") === "true") return closePanel();
+      openPanel(select, "listbox", "sel-type-panel", ["Пожар", "ДТП", "Медицинская помощь", "Утечка газа"],
+        "mat-option", "mat-mdc-option", "option", (text) => {
+          document.getElementById("sel-type-value").textContent = text;
+          log("Выбран тип: " + text);
+        });
+      select.setAttribute("aria-expanded", "true");
+      select.setAttribute("aria-controls", "sel-type-panel");
+    });
+
+    // 2. mat-autocomplete
+    const addresses = ["ул. Тестовая, 1", "ул. Тестовая, 15", "ул. Примерная, 7", "пр. Условный, 3"];
+    const address = document.getElementById("ac-address");
+    address.addEventListener("input", () => {
+      const query = address.value.trim().toLowerCase();
+      const found = addresses.filter((a) => query && a.toLowerCase().includes(query));
+      if (!found.length) return closePanel();
+      openPanel(address, "listbox", "ac-address-panel", found, "mat-option", "mat-mdc-option", "option", (text) => {
+        address.value = text;
+        log("Выбран адрес: " + text);
+      });
+      address.setAttribute("aria-expanded", "true");
+      address.setAttribute("aria-controls", "ac-address-panel");
+    });
+
+    // 3. mat-menu
+    const menuTrigger = document.getElementById("menu-trigger");
+    menuTrigger.addEventListener("click", () => {
+      openPanel(menuTrigger, "menu", "actions-menu", ["Редактировать", "Передать в службу", "Закрыть карточку"],
+        "button", "mat-mdc-menu-item", "menuitem", (text) => log("Действие: " + text));
+      menuTrigger.setAttribute("aria-expanded", "true");
+      menuTrigger.setAttribute("aria-controls", "actions-menu");
+    });
+
+    // 4. Самописный список без ARIA
+    const custom = document.getElementById("custom-service");
+    custom.addEventListener("click", () => {
+      const wrap = custom.parentElement;
+      const existing = wrap.querySelector(".custom-options");
+      if (existing) return existing.remove();
+      const list = document.createElement("div");
+      list.className = "custom-options";
+      ["Пожарная охрана", "Полиция", "Скорая помощь", "Газовая служба"].forEach((text) => {
+        const option = document.createElement("div");
+        option.className = "custom-option";
+        option.textContent = text;
+        option.addEventListener("click", () => {
+          custom.querySelector(".custom-value").textContent = text;
+          list.remove();
+          log("Выбрана служба: " + text);
+        });
+        list.append(option);
+      });
+      wrap.append(list);
+    });
+  </script>
+</body>
+</html>
