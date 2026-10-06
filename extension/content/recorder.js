@@ -168,9 +168,65 @@
 
   const roundRect = (r) => ({ x: Math.round(r.x), y: Math.round(r.y), width: Math.round(r.width), height: Math.round(r.height) });
 
+  // Всплывающие панели, которые могут лежать поверх поля: раскрытый список, меню, диалог, подсказка
+  const OVERLAY_SELECTOR = "[role=listbox], [role=menu], [role=dialog], [role=alertdialog], [role=tooltip], .cdk-overlay-pane";
+  // Сетка проверки перекрытия поля: столбцы × строки
+  const OCCLUSION_COLS = 12;
+  const OCCLUSION_ROWS = 6;
+
+  function visibleOverlayRects() {
+    return Array.from(document.querySelectorAll(OVERLAY_SELECTOR))
+      .map((overlay) => overlay.getBoundingClientRect())
+      .filter((r) => r.width > 0 && r.height > 0);
+  }
+
+  function intersects(a, b) {
+    return a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+  }
+
+  // Точка поля закрыта, если до самого поля над ней лежит элемент всплывающей панели, которая поле не содержит.
+  // Подписи и значки внутри поля и прозрачная подложка оверлея поле не закрывают: иначе маска
+  // пропустила бы часть данных. Ошибка в сторону «видно» безопаснее: лишнее закроется.
+  function isPointCovered(field, x, y) {
+    for (const layer of document.elementsFromPoint(x, y)) {
+      if (layer === field || field.contains(layer) || layer.contains(field)) return false;
+      const overlay = layer.closest(OVERLAY_SELECTOR);
+      if (overlay && !overlay.contains(field)) return true;
+    }
+    return false;
+  }
+
+  function isCellVisible(field, x, y) {
+    const offscreen = x < 0 || y < 0 || x >= window.innerWidth || y >= window.innerHeight;
+    return offscreen || !isPointCovered(field, x, y);
+  }
+
+  // Видимые части поля, если его частично закрывает всплывающая панель; null — панелей над полем нет.
+  // Соседние видимые клетки строки сетки объединяются в одну полосу.
+  function visibleParts(field, r, overlayRects) {
+    if (!overlayRects.some((overlay) => intersects(overlay, r))) return null;
+    const cellWidth = r.width / OCCLUSION_COLS;
+    const cellHeight = r.height / OCCLUSION_ROWS;
+    const parts = [];
+    for (let row = 0; row < OCCLUSION_ROWS; row++) {
+      const y = r.top + (row + 0.5) * cellHeight;
+      let start = null;
+      for (let col = 0; col <= OCCLUSION_COLS; col++) {
+        const visible = col < OCCLUSION_COLS && isCellVisible(field, r.left + (col + 0.5) * cellWidth, y);
+        if (visible && start === null) start = col;
+        if (!visible && start !== null) {
+          parts.push(roundRect({ x: r.left + start * cellWidth, y: r.top + row * cellHeight, width: (col - start) * cellWidth, height: cellHeight }));
+          start = null;
+        }
+      }
+    }
+    return parts;
+  }
+
   // Положение всех видимых полей на момент шага. Значения полей не сохраняются:
   // только адрес, название и прямоугольник, чтобы закрыть поле на скриншоте.
   function collectVisibleFields() {
+    const overlayRects = visibleOverlayRects();
     const fields = [];
     for (const field of document.querySelectorAll(MASKABLE_SELECTOR)) {
       const r = field.getBoundingClientRect();
@@ -178,7 +234,11 @@
         r.right > 0 && r.bottom > 0 && r.left < window.innerWidth && r.top < window.innerHeight &&
         getComputedStyle(field).visibility !== "hidden";
       if (!visible) continue;
-      fields.push({ path: elementPath(field), fieldLabel: getFieldLabel(field).text, rect: roundRect(r) });
+      const entry = { path: elementPath(field), fieldLabel: getFieldLabel(field).text, rect: roundRect(r) };
+      // Части поля, не закрытые всплывающей панелью: маска накладывается только на них
+      const parts = overlayRects.length ? visibleParts(field, r, overlayRects) : null;
+      if (parts) entry.visibleRects = parts;
+      fields.push(entry);
       if (fields.length >= MAX_FIELDS_PER_STEP) break;
     }
     return fields;

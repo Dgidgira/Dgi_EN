@@ -1,5 +1,5 @@
 // Ручное маскирование полей (FR-6, SQ-6). Автор отмечает поле на любом скриншоте записи,
-// и оно закрывается на всех скриншотах, а его значение в описаниях заменяется на «***».
+// и оно размывается на всех скриншотах, а его значение в описаниях заменяется на «***».
 //
 // Отметка: { path, fieldLabel, pageKey }. Поле считается тем же, если совпал адрес элемента
 // или название поля на той же странице. Это с запасом: адреса полей в Angular могут меняться
@@ -21,11 +21,17 @@ function isFieldMasked(field, masks, fieldPageKey) {
   return masks.some((mask) => fieldMatchesMask(field, mask, fieldPageKey));
 }
 
-// Прямоугольники полей, которые нужно закрыть на скриншоте шага
+// Видимые части поля на скриншоте. Если поле частично закрыто раскрытым списком или меню,
+// recorder.js сохраняет только незакрытые части (visibleRects; пустой массив — поле закрыто целиком).
+function visibleFieldRects(field) {
+  return field.visibleRects || [field.rect];
+}
+
+// Прямоугольники полей, которые нужно скрыть на скриншоте шага
 function maskedRects(step, masks) {
   if (!masks.length || !step.fields) return [];
   const key = pageKey(step.page?.url);
-  return step.fields.filter((field) => isFieldMasked(field, masks, key)).map((field) => field.rect);
+  return step.fields.filter((field) => isFieldMasked(field, masks, key)).flatMap(visibleFieldRects);
 }
 
 // Поле, в которое шаг вводит значение. У склеенного выбора в списке это поле списка, а не вариант.

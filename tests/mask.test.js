@@ -50,6 +50,11 @@ expect("то же название, другая страница → не за�
 expect("тот же адрес на другой странице → закрыто (с запасом)",
   maskedRects(step([phone], { page: { url: "http://127.0.0.1:8000/other.html" } }), masks), [phone.rect]);
 
+// --- Поле частично под раскрытым списком: скрываются только видимые части
+const partlyCovered = { ...phone, visibleRects: [{ x: 10, y: 100, width: 50, height: 30 }] };
+expect("частично под списком → только видимая часть", maskedRects(step([partlyCovered]), masks), [{ x: 10, y: 100, width: 50, height: 30 }]);
+expect("целиком под списком → ничего не скрывается поверх списка", maskedRects(step([{ ...phone, visibleRects: [] }]), masks), []);
+
 // --- Значения в описаниях
 const typed = { type: "input", value: "+7 900 000-00-00", fieldLabel: "Телефон заявителя", page: { url: FORM }, element: { path: "#phone" } };
 expect("значение отмеченного поля заменяется", maskStep(typed, masks).value, "***");

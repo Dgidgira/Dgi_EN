@@ -77,8 +77,8 @@ function renderShot(step, dataUrl) {
 
   if (!step.viewport) return wrap;
 
-  // Маски поверх снимка. На экране это непрозрачные прямоугольники; при выгрузке они
-  // будут впечатаны в саму картинку
+  // Маски поверх снимка: сильное размытие области. При выгрузке размытие будет
+  // впечатано в саму картинку
   for (const rect of maskedRects(step, masks)) {
     const mask = el("div", "shot-mask");
     Object.assign(mask.style, rectStyle(rect, step.viewport, MASK_PADDING));
@@ -98,18 +98,22 @@ function renderShot(step, dataUrl) {
 // Режим скрытия: пунктирные области всех полей на снимке; клик скрывает поле на всех снимках
 function renderFieldTargets(step) {
   const pageKeyOfStep = pageKey(step.page?.url);
-  return (step.fields || []).map((field) => {
+  // Области только по видимым частям поля: под раскрытым списком щелчок должен попадать в список, а не в поле
+  return (step.fields || []).flatMap((field) => {
     const masked = isFieldMasked(field, masks, pageKeyOfStep);
     const name = field.fieldLabel || t("viewerMaskFieldUnnamed");
-    const target = el("button", masked ? "shot-field masked" : "shot-field");
-    target.type = "button";
-    target.title = t(masked ? "viewerMaskFieldShow" : "viewerMaskFieldHide", [name]);
-    target.setAttribute("aria-label", target.title);
-    Object.assign(target.style, rectStyle(field.rect, step.viewport, MASK_PADDING));
-    target.addEventListener("click", async () => {
-      await chrome.storage.local.set({ maskedFields: toggleMask(masks, field, step.page?.url) });
+    const title = t(masked ? "viewerMaskFieldShow" : "viewerMaskFieldHide", [name]);
+    return visibleFieldRects(field).map((rect) => {
+      const target = el("button", masked ? "shot-field masked" : "shot-field");
+      target.type = "button";
+      target.title = title;
+      target.setAttribute("aria-label", title);
+      Object.assign(target.style, rectStyle(rect, step.viewport, MASK_PADDING));
+      target.addEventListener("click", async () => {
+        await chrome.storage.local.set({ maskedFields: toggleMask(masks, field, step.page?.url) });
+      });
+      return target;
     });
-    return target;
   });
 }
 
