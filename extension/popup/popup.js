@@ -34,8 +34,9 @@ async function init() {
     const { recording: current = false } = await chrome.storage.local.get("recording");
     const next = !current;
     // Новая запись начинается с чистого списка шагов; после остановки шаги сохраняются
-    // Скрытые поля и области относятся к записи и тоже сбрасываются
-    await chrome.storage.local.set(next ? { recording: true, steps: [], maskedFields: [], maskedAreas: {} } : { recording: false });
+    // Скрытые поля, области и объединение шагов относятся к записи и тоже сбрасываются
+    const fresh = { recording: true, steps: [], maskedFields: [], maskedAreas: {}, joinedSteps: [] };
+    await chrome.storage.local.set(next ? fresh : { recording: false });
     render(next);
   });
 

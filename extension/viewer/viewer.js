@@ -2,7 +2,7 @@
 // Перед показом шаги проходят обработку (SQ-1, SQ-2, shared/normalize.js), текст шага —
 // шаблонное описание (FR-3, shared/describe.js). Отмеченные автором поля размываются на всех
 // скриншотах и скрываются в описаниях; произвольные области размываются на своём скриншоте
-// (FR-6, shared/mask.js).
+// (FR-6, shared/mask.js). Соседние шаги можно объединить под одним скриншотом (FR-7, shared/groups.js).
 
 const t = (key, substitutions) => chrome.i18n.getMessage(key, substitutions);
 
@@ -26,6 +26,8 @@ const maskHintEl = document.getElementById("mask-hint");
 // Режим работы — только на этой странице: null, "fields" (скрытие полей) или "areas" (выделение областей).
 let masks = [];
 let maskedAreas = {};
+// Шаги, объединённые с предыдущим под одним скриншотом (ключ "joinedSteps")
+let joinedSteps = [];
 let mode = null;
 
 document.title = t("viewerTitle");
@@ -78,7 +80,14 @@ function isVisibleInViewport(rect, viewport) {
     rect.x + rect.width > 0 && rect.y + rect.height > 0;
 }
 
-function renderShot(step, dataUrl) {
+// Рамка шага на его собственном скриншоте
+function ownFrames(step) {
+  const visible = step.viewport && step.rect && isVisibleInViewport(step.rect, step.viewport);
+  return visible ? [{ rect: step.rect, number: null }] : [];
+}
+
+// frames — рамки на снимке: [{ rect, number }]; у группы шагов на рамке номер шага
+function renderShot(step, dataUrl, frames = ownFrames(step)) {
   if (!dataUrl) {
     const reason = step.screenshotError ? `: ${step.screenshotError}` : "";
     return el("p", "no-shot", t("viewerNoScreenshot") + reason);
@@ -100,9 +109,10 @@ function renderShot(step, dataUrl) {
   }
   areasOf(maskedAreas, step.id).forEach((area, index) => wrap.append(renderArea(step.id, area, index)));
 
-  if (step.viewport && step.rect && isVisibleInViewport(step.rect, step.viewport)) {
+  for (const { rect, number } of frames) {
     const frame = el("div", "shot-highlight");
-    Object.assign(frame.style, rectStyle(step.rect, step.viewport, HIGHLIGHT_PADDING));
+    Object.assign(frame.style, rectStyle(rect, step.viewport, HIGHLIGHT_PADDING));
+    if (number !== null) frame.append(el("span", "frame-number", String(number)));
     wrap.append(frame);
   }
 
@@ -183,43 +193,97 @@ function renderFieldTargets(step) {
   });
 }
 
-// number — номер шага в инструкции; у отсеянного шага номера нет, вместо него причина отсева
-function renderStep(rawStep, { number = null, reason = null, dataUrl }) {
-  // Значения отмеченных полей не показываем нигде, включая технические подробности
-  const step = maskStep(rawStep, masks);
-  const item = el("li", reason ? "step dropped" : "step");
-  const description = describeStep(step);
+async function saveJoined(stepId) {
+  await chrome.storage.local.set({ joinedSteps: toggleJoin(joinedSteps, stepId) });
+}
 
-  const head = el("p", "step-head");
-  if (number !== null) head.append(el("span", "step-number", t("viewerStepNumber", [String(number)])));
-  head.append(el("span", "step-text", description.text));
-  item.append(head);
-  if (reason) item.append(el("p", "step-reason", t(reason)));
+function smallButton(text, onClick) {
+  const button = el("button", "small-button", text);
+  button.type = "button";
+  button.addEventListener("click", onClick);
+  return button;
+}
 
-  item.append(renderShot(step, dataUrl));
-
-  // Данные шага для анализа в спайке (SQ-5): откуда взята подпись, что записано
+// Данные шагов для анализа в спайке (SQ-5): откуда взята подпись, что записано
+function renderDebug(steps) {
   const debug = el("details", "step-debug");
   debug.append(el("summary", null, t("viewerDebugToggle")));
-  const meta = [step.type, step.label ? `«${step.label}»` : ""];
-  if (step.value !== null && step.value !== undefined) meta.push(`= «${step.value}»`);
-  meta.push(t("viewerLabelSource", [step.labelSource]));
-  if (step.mergedFrom?.length) meta.push(`+${step.mergedFrom.length}`);
-  if (step.element?.path) meta.push(step.element.path);
-  if (step.screenshotSource) meta.push(t("viewerShotSource", [step.screenshotSource]));
-  meta.push(step.page?.url || "");
-  debug.append(el("p", "step-meta", meta.filter(Boolean).join(" · ")));
-  item.append(debug);
+  for (const step of steps) {
+    const meta = [step.type, step.label ? `«${step.label}»` : ""];
+    if (step.value !== null && step.value !== undefined) meta.push(`= «${step.value}»`);
+    meta.push(t("viewerLabelSource", [step.labelSource]));
+    if (step.mergedFrom?.length) meta.push(`+${step.mergedFrom.length}`);
+    if (step.element?.path) meta.push(step.element.path);
+    if (step.screenshotSource) meta.push(t("viewerShotSource", [step.screenshotSource]));
+    meta.push(step.page?.url || "");
+    debug.append(el("p", "step-meta", meta.filter(Boolean).join(" · ")));
+  }
+  return debug;
+}
 
+// Карточка группы шагов: один шаг или несколько шагов под общим скриншотом последнего шага
+function renderGroup(group, isFirstGroup, shotOf) {
+  const multi = group.items.length > 1;
+  const card = el("li", multi ? "step group" : "step");
+  // Значения отмеченных полей не показываем нигде, включая технические подробности
+  const shown = group.items.map(({ step, number }) => ({ raw: step, step: maskStep(step, masks), number }));
+
+  if (!isFirstGroup) {
+    const join = smallButton(t("viewerJoinPrevious"), () => saveJoined(group.items[0].step.id));
+    join.classList.add("join-button");
+    card.append(join);
+  }
+
+  if (!multi) {
+    const head = el("p", "step-head");
+    head.append(el("span", "step-number", t("viewerStepNumber", [String(shown[0].number)])));
+    head.append(el("span", "step-text", describeStep(shown[0].step).text));
+    card.append(head);
+  } else {
+    const first = shown[0].number;
+    const last = shown[shown.length - 1].number;
+    card.append(el("p", "step-head step-number", t("viewerGroupNumbers", [String(first), String(last)])));
+    const list = el("ol", "group-items");
+    shown.forEach(({ raw, step, number }, index) => {
+      const item = el("li", "group-item");
+      item.append(el("span", "group-item-number", String(number)));
+      item.append(el("span", "step-text", describeStep(step).text));
+      if (!rectOnShot(raw, group.shotStep)) item.append(el("span", "not-on-shot", t("viewerNotOnShot")));
+      if (index > 0) item.append(smallButton(t("viewerSplit"), () => saveJoined(raw.id)));
+      list.append(item);
+    });
+    card.append(list);
+  }
+
+  const frames = group.items
+    .map(({ step, number }) => ({ rect: rectOnShot(step, group.shotStep), number: multi ? number : null }))
+    .filter((frame) => frame.rect);
+  card.append(renderShot(group.shotStep, shotOf(group.shotStep), frames));
+  card.append(renderDebug(shown.map(({ step }) => step)));
+  return card;
+}
+
+// Отсеянный шаг: без номера, с причиной отсева
+function renderDroppedStep(rawStep, reason, dataUrl) {
+  const step = maskStep(rawStep, masks);
+  const item = el("li", "step dropped");
+  const head = el("p", "step-head");
+  head.append(el("span", "step-text", describeStep(step).text));
+  item.append(head);
+  item.append(el("p", "step-reason", t(reason)));
+  item.append(renderShot(step, dataUrl));
+  item.append(renderDebug([step]));
   return item;
 }
 
-// Сводка: SQ-5 — у скольких шагов описание построено с подписью элемента; SQ-2 — сколько отсеяно
-function renderStats(steps, dropped) {
+// Сводка: SQ-5 — у скольких шагов описание построено с подписью элемента; SQ-2 — сколько отсеяно;
+// FR-7 — сколько скриншотов останется в инструкции после объединения шагов
+function renderStats(steps, dropped, groups) {
   const withLabel = steps.filter((step) => describeStep(step).usesLabel).length;
   statsEl.textContent = [
     t("viewerLabelStats", [String(withLabel), String(steps.length)]),
     t("viewerDroppedStats", [String(dropped.length)]),
+    t("viewerShotCount", [String(countShots(groups))]),
   ].join(" · ");
   statsEl.hidden = steps.length + dropped.length === 0;
 }
@@ -238,10 +302,11 @@ function renderMaskToolbar() {
 }
 
 async function render() {
-  const stored = await chrome.storage.local.get(["steps", "maskedFields", "maskedAreas"]);
+  const stored = await chrome.storage.local.get(["steps", "maskedFields", "maskedAreas", "joinedSteps"]);
   const { steps: rawSteps = [], maskedFields = [] } = stored;
   masks = maskedFields;
   maskedAreas = stored.maskedAreas || {};
+  joinedSteps = stored.joinedSteps || [];
   renderMaskToolbar();
   const { steps, dropped } = normalizeSteps(rawSteps);
   const shotKeys = rawSteps.map((step) => SHOT_PREFIX + step.id);
@@ -249,17 +314,18 @@ async function render() {
   const shotOf = (step) => shots[SHOT_PREFIX + step.id];
 
   emptyEl.hidden = rawSteps.length > 0;
-  renderStats(steps, dropped);
-  stepsEl.replaceChildren(...steps.map((step, i) => renderStep(step, { number: i + 1, dataUrl: shotOf(step) })));
+  const groups = buildGroups(steps, joinedSteps);
+  renderStats(steps, dropped, groups);
+  stepsEl.replaceChildren(...groups.map((group, i) => renderGroup(group, i === 0, shotOf)));
 
   // Раздел сохраняет состояние «раскрыт / свёрнут» при обновлении во время записи
   droppedEl.hidden = dropped.length === 0;
-  droppedListEl.replaceChildren(...dropped.map(({ step, reason }) => renderStep(step, { reason, dataUrl: shotOf(step) })));
+  droppedListEl.replaceChildren(...dropped.map(({ step, reason }) => renderDroppedStep(step, reason, shotOf(step))));
 }
 
 render();
 
 // Страница обновляется сама, пока идёт запись
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === "local" && ["steps", "maskedFields", "maskedAreas"].some((key) => key in changes)) render();
+  if (areaName === "local" && ["steps", "maskedFields", "maskedAreas", "joinedSteps"].some((key) => key in changes)) render();
 });

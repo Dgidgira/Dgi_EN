@@ -328,6 +328,37 @@
       }
     }
   },
+  "viewerShotCount": {
+    "message": "Скриншотов: $COUNT$",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "4"
+      }
+    }
+  },
+  "viewerGroupNumbers": {
+    "message": "Шаги $FROM$–$TO$",
+    "placeholders": {
+      "from": {
+        "content": "$1",
+        "example": "3"
+      },
+      "to": {
+        "content": "$2",
+        "example": "6"
+      }
+    }
+  },
+  "viewerJoinPrevious": {
+    "message": "Объединить с предыдущим"
+  },
+  "viewerSplit": {
+    "message": "Отделить"
+  },
+  "viewerNotOnShot": {
+    "message": "(не виден на скриншоте)"
+  },
   "viewerDroppedTitle": {
     "message": "Отсеянные шаги"
   },
