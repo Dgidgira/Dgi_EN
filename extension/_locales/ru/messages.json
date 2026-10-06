@@ -359,6 +359,45 @@
   "viewerNotOnShot": {
     "message": "(не виден на скриншоте)"
   },
+  "viewerCrop": {
+    "message": "Кадрировать"
+  },
+  "viewerCropChange": {
+    "message": "Изменить кадр"
+  },
+  "viewerFrameOutsideCrop": {
+    "message": "(рамка шага вне кадра)"
+  },
+  "cropTitle": {
+    "message": "Кадрирование скриншота"
+  },
+  "cropHint": {
+    "message": "Потяните за углы или стороны рамки, чтобы изменить кадр; за середину рамки — чтобы сдвинуть. Enter — применить, Esc — отмена."
+  },
+  "cropFree": {
+    "message": "Свободно"
+  },
+  "cropOriginal": {
+    "message": "Исходные"
+  },
+  "crop1x1": {
+    "message": "1:1"
+  },
+  "crop4x3": {
+    "message": "4:3"
+  },
+  "crop16x9": {
+    "message": "16:9"
+  },
+  "cropReset": {
+    "message": "Сбросить"
+  },
+  "cropCancel": {
+    "message": "Отмена"
+  },
+  "cropApply": {
+    "message": "Применить"
+  },
   "viewerDroppedTitle": {
     "message": "Отсеянные шаги"
   },

@@ -95,6 +95,27 @@ h1 {
   max-width: 100%;
 }
 
+/* Весь снимок со слоями поверх него (размытие, рамки, области) */
+.shot-stage {
+  position: relative;
+}
+
+/* Кадрированный снимок: окно в пропорциях кадра, весь снимок увеличен и сдвинут внутри */
+.shot.cropped {
+  width: 100%;
+}
+
+.shot.cropped .shot-stage {
+  position: absolute;
+}
+
+.shot.cropped img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+}
+
 .shot-highlight {
   position: absolute;
   box-sizing: border-box;
@@ -339,4 +360,137 @@ h1 {
 .frame-number.side-inside {
   top: 2px;
   right: 2px;
+}
+
+/* Кадрирование (FR-7): окно в духе «Фотографий» Windows */
+.crop-open {
+  display: block;
+  margin-top: 6px;
+}
+
+.crop-dialog {
+  max-width: 96vw;
+  max-height: 96vh;
+  padding: 16px 20px;
+  border: none;
+  border-radius: 12px;
+  color: var(--text);
+  background: var(--card);
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.35);
+}
+
+.crop-dialog::backdrop {
+  background: rgb(0 0 0 / 0.6);
+}
+
+.crop-title {
+  margin: 0 0 4px;
+  font-size: 18px;
+}
+
+.crop-hint {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.crop-shot {
+  display: block;
+  width: fit-content;
+  margin: 0 auto;
+  touch-action: none;
+  user-select: none;
+}
+
+.crop-shot img {
+  max-width: min(90vw, 1400px);
+  max-height: 70vh;
+}
+
+/* Рамка кадра: всё вне её затемнено */
+.crop-box {
+  position: absolute;
+  z-index: 2;
+  box-sizing: border-box;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 9999px rgb(0 0 0 / 0.55);
+  cursor: move;
+}
+
+.crop-third {
+  position: absolute;
+  background: rgb(255 255 255 / 0.55);
+  pointer-events: none;
+}
+
+.crop-third.v1, .crop-third.v2 { top: 0; bottom: 0; width: 1px; }
+.crop-third.v1 { left: 33.333%; }
+.crop-third.v2 { left: 66.666%; }
+.crop-third.h1, .crop-third.h2 { left: 0; right: 0; height: 1px; }
+.crop-third.h1 { top: 33.333%; }
+.crop-third.h2 { top: 66.666%; }
+
+/* Маркеры: уголки и середины сторон. Стоят внутри рамки, чтобы не обрезаться у краёв снимка */
+.crop-handle {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  border: 2px solid #1f2937;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.crop-handle.h-nw { left: -2px; top: -2px; cursor: nwse-resize; }
+.crop-handle.h-n { left: 50%; top: -2px; transform: translateX(-50%); cursor: ns-resize; }
+.crop-handle.h-ne { right: -2px; top: -2px; cursor: nesw-resize; }
+.crop-handle.h-e { right: -2px; top: 50%; transform: translateY(-50%); cursor: ew-resize; }
+.crop-handle.h-se { right: -2px; bottom: -2px; cursor: nwse-resize; }
+.crop-handle.h-s { left: 50%; bottom: -2px; transform: translateX(-50%); cursor: ns-resize; }
+.crop-handle.h-sw { left: -2px; bottom: -2px; cursor: nesw-resize; }
+.crop-handle.h-w { left: -2px; top: 50%; transform: translateY(-50%); cursor: ew-resize; }
+
+.crop-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.crop-ratios {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-right: auto;
+}
+
+.crop-ratio,
+.crop-button {
+  padding: 6px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font: inherit;
+  color: var(--text);
+  background: #fff;
+  cursor: pointer;
+}
+
+.crop-ratio[aria-pressed="true"] {
+  border-color: var(--target);
+  color: #fff;
+  background: var(--target);
+}
+
+.crop-button.primary {
+  border-color: var(--target);
+  color: #fff;
+  background: var(--target);
+  font-weight: 600;
+}
+
+.crop-ratio:focus-visible,
+.crop-button:focus-visible {
+  outline: 3px solid #93c5fd;
+  outline-offset: 2px;
 }

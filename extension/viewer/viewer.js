@@ -2,7 +2,8 @@
 // Перед показом шаги проходят обработку (SQ-1, SQ-2, shared/normalize.js), текст шага —
 // шаблонное описание (FR-3, shared/describe.js). Отмеченные автором поля размываются на всех
 // скриншотах и скрываются в описаниях; произвольные области размываются на своём скриншоте
-// (FR-6, shared/mask.js). Соседние шаги можно объединить под одним скриншотом (FR-7, shared/groups.js).
+// (FR-6, shared/mask.js). Соседние шаги можно объединить под одним скриншотом (FR-7, shared/groups.js),
+// скриншот можно кадрировать (FR-7, shared/crop.js).
 
 const t = (key, substitutions) => chrome.i18n.getMessage(key, substitutions);
 
@@ -28,6 +29,8 @@ let masks = [];
 let maskedAreas = {};
 // Шаги, объединённые с предыдущим под одним скриншотом (ключ "joinedSteps")
 let joinedSteps = [];
+// Кадры скриншотов (ключ "crops"): { [id шага со скриншотом]: рамка в долях снимка }
+let crops = {};
 let mode = null;
 
 document.title = t("viewerTitle");
@@ -106,47 +109,189 @@ function ownAreas(step) {
 }
 
 // frames — рамки на снимке: [{ rect, number }]; у группы шагов на рамке номер шага.
-// areas — размытые области: у группы сюда входят и области, выделенные на скриншотах ранних шагов
-function renderShot(step, dataUrl, frames = ownFrames(step), areas = ownAreas(step)) {
+// areas — размытые области: у группы сюда входят и области, выделенные на скриншотах ранних шагов.
+// crop — кадр (null — весь снимок). interactive — можно ли отмечать поля и области (нет в окне кадрирования).
+function renderShot(step, dataUrl, options = {}) {
+  const { frames = ownFrames(step), areas = ownAreas(step), crop = null, interactive = true } = options;
   if (!dataUrl) {
     const reason = step.screenshotError ? `: ${step.screenshotError}` : "";
     return el("p", "no-shot", t("viewerNoScreenshot") + reason);
   }
+  // wrap — видимое окно снимка; stage — весь снимок со всеми слоями поверх него.
+  // При кадрировании stage увеличивается и сдвигается внутри wrap, слои двигаются вместе со снимком.
   const wrap = el("div", "shot");
+  const stage = el("div", "shot-stage");
+  wrap.append(stage);
   const img = el("img");
   img.src = dataUrl;
   img.alt = step.label;
   img.draggable = false;
-  wrap.append(img);
+  stage.append(img);
 
   // Размытие поверх снимка. При выгрузке оно будет впечатано в саму картинку
   if (step.viewport) {
     for (const rect of maskedRects(step, masks)) {
       const mask = el("div", "shot-mask");
       Object.assign(mask.style, rectStyle(rect, step.viewport, MASK_PADDING));
-      wrap.append(mask);
+      stage.append(mask);
     }
   }
-  for (const { stepId, index, area } of areas) wrap.append(renderArea(stepId, area, index));
+  for (const { stepId, index, area } of areas) stage.append(renderArea(stepId, area, index, interactive));
 
   for (const { rect, number } of frames) {
     const frame = el("div", "shot-highlight");
     Object.assign(frame.style, rectStyle(rect, step.viewport, HIGHLIGHT_PADDING));
     if (number !== null) frame.append(el("span", `frame-number ${badgeSide(rect, step.viewport)}`, String(number)));
-    wrap.append(frame);
+    stage.append(frame);
   }
 
-  if (mode === "fields" && step.viewport) wrap.append(...renderFieldTargets(step));
-  if (mode === "areas") enableAreaDrawing(wrap, img, step.id);
+  if (interactive && mode === "fields" && step.viewport) stage.append(...renderFieldTargets(step));
+  if (interactive && mode === "areas") enableAreaDrawing(wrap, stage, img, step.id);
+  if (!isFullCrop(crop)) applyCropView(wrap, stage, img, step, crop);
   return wrap;
+}
+
+// Показ кадра: окно снимка получает пропорции кадра, весь снимок увеличивается и сдвигается внутри
+function applyCropView(wrap, stage, img, step, crop) {
+  wrap.classList.add("cropped");
+  Object.assign(stage.style, {
+    width: 100 / crop.width + "%",
+    height: 100 / crop.height + "%",
+    left: (-crop.x / crop.width) * 100 + "%",
+    top: (-crop.y / crop.height) * 100 + "%",
+  });
+  const setSize = (width, height) => {
+    wrap.style.aspectRatio = `${width * crop.width} / ${height * crop.height}`;
+  };
+  if (step.viewport) setSize(step.viewport.width, step.viewport.height);
+  // Кадр показываем в том же масштабе, что и некадрированный снимок, но не шире карточки
+  img.addEventListener("load", () => {
+    setSize(img.naturalWidth, img.naturalHeight);
+    wrap.style.width = `min(100%, ${Math.round(img.naturalWidth * crop.width)}px)`;
+  });
+}
+
+// --- Окно кадрирования: как обрезка в «Фотографиях» Windows ---
+
+const CROP_HANDLES = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
+// Пропорции: ключ строки и отношение ширины к высоте в пикселях ("original" — как у снимка)
+const CROP_RATIOS = [
+  ["cropFree", null],
+  ["cropOriginal", "original"],
+  ["crop1x1", 1],
+  ["crop4x3", 4 / 3],
+  ["crop16x9", 16 / 9],
+];
+
+function openCropEditor(shotStep, dataUrl, frames, areas) {
+  const dialog = el("dialog", "crop-dialog");
+  dialog.append(el("h2", "crop-title", t("cropTitle")));
+  dialog.append(el("p", "crop-hint", t("cropHint")));
+
+  const shot = renderShot(shotStep, dataUrl, { frames, areas, interactive: false });
+  shot.classList.add("crop-shot");
+  const stage = shot.querySelector(".shot-stage");
+  const img = shot.querySelector("img");
+  const box = el("div", "crop-box");
+  ["v1", "v2", "h1", "h2"].forEach((line) => box.append(el("div", `crop-third ${line}`)));
+  CROP_HANDLES.forEach((handle) => {
+    const node = el("div", `crop-handle h-${handle}`);
+    node.dataset.handle = handle;
+    box.append(node);
+  });
+  stage.append(box);
+  dialog.append(shot);
+
+  let crop = { ...(crops[shotStep.id] || FULL_CROP) };
+  let ratio = null;
+  const draw = () => Object.assign(box.style, fractionStyle(crop));
+  const aspect = () => (ratio === "original" ? 1 : aspectInFractions(
+    ratio, img.naturalWidth || shotStep.viewport?.width || 1, img.naturalHeight || shotStep.viewport?.height || 1));
+
+  // Перетаскивание: за маркер — размер, за середину рамки — положение
+  box.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    const handle = event.target.dataset.handle || "move";
+    const imageBox = img.getBoundingClientRect();
+    const start = { ...crop };
+    box.setPointerCapture(event.pointerId);
+    const onMove = (e) => {
+      const dx = (e.clientX - event.clientX) / imageBox.width;
+      const dy = (e.clientY - event.clientY) / imageBox.height;
+      crop = handle === "move" ? moveCrop(start, dx, dy) : resizeCrop(start, handle, dx, dy, aspect());
+      draw();
+    };
+    const onEnd = () => {
+      box.removeEventListener("pointermove", onMove);
+      box.removeEventListener("pointerup", onEnd);
+      box.removeEventListener("pointercancel", onEnd);
+    };
+    box.addEventListener("pointermove", onMove);
+    box.addEventListener("pointerup", onEnd);
+    box.addEventListener("pointercancel", onEnd);
+  });
+
+  const ratios = el("div", "crop-ratios");
+  const ratioButtons = CROP_RATIOS.map(([key, value]) => {
+    const button = el("button", "crop-ratio", t(key));
+    button.type = "button";
+    button.addEventListener("click", () => {
+      ratio = value;
+      crop = applyAspect(crop, aspect());
+      ratioButtons.forEach((b) => b.setAttribute("aria-pressed", String(b === button)));
+      draw();
+    });
+    button.setAttribute("aria-pressed", String(value === null));
+    ratios.append(button);
+    return button;
+  });
+
+  const apply = async () => {
+    const next = { ...crops };
+    if (isFullCrop(crop)) delete next[shotStep.id];
+    else next[shotStep.id] = roundedCrop(crop);
+    dialog.close();
+    await chrome.storage.local.set({ crops: next });
+  };
+  const footer = el("div", "crop-footer");
+  const reset = el("button", "crop-button", t("cropReset"));
+  reset.type = "button";
+  reset.addEventListener("click", () => {
+    crop = { ...FULL_CROP };
+    ratio = null;
+    ratioButtons.forEach((b, i) => b.setAttribute("aria-pressed", String(i === 0)));
+    draw();
+  });
+  const cancel = el("button", "crop-button", t("cropCancel"));
+  cancel.type = "button";
+  cancel.addEventListener("click", () => dialog.close());
+  const ok = el("button", "crop-button primary", t("cropApply"));
+  ok.type = "button";
+  ok.addEventListener("click", apply);
+  footer.append(ratios, reset, cancel, ok);
+  dialog.append(footer);
+
+  // Enter — применить (кроме нажатия на кнопку), Esc закрывает окно сам
+  dialog.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && event.target.tagName !== "BUTTON") {
+      event.preventDefault();
+      apply();
+    }
+  });
+  dialog.addEventListener("close", () => dialog.remove());
+  document.body.append(dialog);
+  dialog.showModal();
+  ok.focus();
+  draw();
 }
 
 // Размытая произвольная область; в режиме выделения у неё есть кнопка удаления.
 // stepId и index — где область хранится (у шага, на скриншоте которого её выделили)
-function renderArea(stepId, area, index) {
+function renderArea(stepId, area, index, interactive) {
   const mask = el("div", "shot-mask area");
   Object.assign(mask.style, fractionStyle(area));
-  if (mode === "areas") {
+  if (interactive && mode === "areas") {
     const remove = el("button", "area-remove", "×");
     remove.type = "button";
     remove.title = t("viewerMaskAreaRemove");
@@ -160,7 +305,7 @@ function renderArea(stepId, area, index) {
 }
 
 // Выделение прямоугольника мышью на снимке. Координаты — в долях размера снимка
-function enableAreaDrawing(wrap, img, stepId) {
+function enableAreaDrawing(wrap, stage, img, stepId) {
   wrap.classList.add("drawing");
   wrap.addEventListener("pointerdown", (event) => {
     if (event.button !== 0 || event.target.closest(".area-remove")) return;
@@ -169,7 +314,7 @@ function enableAreaDrawing(wrap, img, stepId) {
     const toPoint = (e) => ({ x: (e.clientX - box.left) / box.width, y: (e.clientY - box.top) / box.height });
     const start = toPoint(event);
     const draft = el("div", "area-draft");
-    wrap.append(draft);
+    stage.append(draft);
     wrap.setPointerCapture(event.pointerId);
 
     const onMove = (e) => {
@@ -245,6 +390,7 @@ function renderDebug(steps) {
 // Карточка группы шагов: один шаг или несколько шагов под общим скриншотом последнего шага
 function renderGroup(group, isFirstGroup, shotOf) {
   const multi = group.items.length > 1;
+  const crop = crops[group.shotStep.id] || null;
   const card = el("li", multi ? "step group" : "step");
   // Значения отмеченных полей не показываем нигде, включая технические подробности
   const shown = group.items.map(({ step, number }) => ({ raw: step, step: maskStep(step, masks), number }));
@@ -269,7 +415,9 @@ function renderGroup(group, isFirstGroup, shotOf) {
       const item = el("li", "group-item");
       item.append(el("span", "group-item-number", String(number)));
       item.append(el("span", "step-text", describeStep(step).text));
-      if (!rectOnShot(raw, group.shotStep)) item.append(el("span", "not-on-shot", t("viewerNotOnShot")));
+      const rect = rectOnShot(raw, group.shotStep);
+      if (!rect) item.append(el("span", "not-on-shot", t("viewerNotOnShot")));
+      else if (!rectInCrop(rect, group.shotStep.viewport, crop)) item.append(el("span", "not-on-shot", t("viewerFrameOutsideCrop")));
       if (index > 0) item.append(smallButton(t("viewerSplit"), () => saveJoined(raw.id)));
       list.append(item);
     });
@@ -283,7 +431,17 @@ function renderGroup(group, isFirstGroup, shotOf) {
   const areas = group.items.flatMap(({ step }) => areasOf(maskedAreas, step.id)
     .map((area, index) => ({ stepId: step.id, index, area: areaOnShot(area, step, group.shotStep) }))
     .filter(({ area }) => area));
-  card.append(renderShot(group.shotStep, shotOf(group.shotStep), frames, areas));
+  const dataUrl = shotOf(group.shotStep);
+  if (!multi && frames.length && !rectInCrop(frames[0].rect, group.shotStep.viewport, crop)) {
+    card.append(el("p", "not-on-shot", t("viewerFrameOutsideCrop")));
+  }
+  card.append(renderShot(group.shotStep, dataUrl, { frames, areas, crop }));
+  if (dataUrl) {
+    const cropButton = smallButton(t(isFullCrop(crop) ? "viewerCrop" : "viewerCropChange"),
+      () => openCropEditor(group.shotStep, dataUrl, frames, areas));
+    cropButton.classList.add("crop-open");
+    card.append(cropButton);
+  }
   card.append(renderDebug(shown.map(({ step }) => step)));
   return card;
 }
@@ -327,11 +485,12 @@ function renderMaskToolbar() {
 }
 
 async function render() {
-  const stored = await chrome.storage.local.get(["steps", "maskedFields", "maskedAreas", "joinedSteps"]);
+  const stored = await chrome.storage.local.get(["steps", "maskedFields", "maskedAreas", "joinedSteps", "crops"]);
   const { steps: rawSteps = [], maskedFields = [] } = stored;
   masks = maskedFields;
   maskedAreas = stored.maskedAreas || {};
   joinedSteps = stored.joinedSteps || [];
+  crops = stored.crops || {};
   renderMaskToolbar();
   const { steps, dropped } = normalizeSteps(rawSteps);
   const shotKeys = rawSteps.map((step) => SHOT_PREFIX + step.id);
@@ -352,5 +511,5 @@ render();
 
 // Страница обновляется сама, пока идёт запись
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === "local" && ["steps", "maskedFields", "maskedAreas", "joinedSteps"].some((key) => key in changes)) render();
+  if (areaName === "local" && ["steps", "maskedFields", "maskedAreas", "joinedSteps", "crops"].some((key) => key in changes)) render();
 });
