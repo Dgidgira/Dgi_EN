@@ -8,6 +8,15 @@
 <body>
   <h1 id="title"></h1>
   <p id="stats" class="stats" hidden></p>
+  <div class="export-bar">
+    <label class="doc-title-field">
+      <span id="doc-title-label"></span>
+      <input id="doc-title" type="text" maxlength="200" autocomplete="off">
+    </label>
+    <button id="export-html" type="button" class="export-button"></button>
+    <button id="export-docx" type="button" class="export-button"></button>
+    <span id="export-status" class="tool-note" role="status"></span>
+  </div>
   <div class="toolbar">
     <button id="mask-mode" type="button" class="tool-button" aria-pressed="false"></button>
     <button id="area-mode" type="button" class="tool-button" aria-pressed="false"></button>
@@ -26,6 +35,10 @@
   <script src="../shared/mask.js"></script>
   <script src="../shared/groups.js"></script>
   <script src="../shared/crop.js"></script>
+  <script src="../shared/zip.js"></script>
+  <script src="../shared/docx.js"></script>
+  <script src="../shared/html-export.js"></script>
   <script src="viewer.js"></script>
+  <script src="export.js"></script>
 </body>
 </html>

@@ -494,3 +494,64 @@ h1 {
   outline: 3px solid #93c5fd;
   outline-offset: 2px;
 }
+
+/* Выгрузка документа (FR-8) */
+.export-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 12px;
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+}
+
+.doc-title-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 280px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.doc-title-field input {
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 15px;
+  color: var(--text);
+}
+
+.doc-title-field input:focus-visible {
+  outline: 3px solid #93c5fd;
+  outline-offset: 1px;
+}
+
+.export-button {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 10px;
+  font: inherit;
+  font-weight: 600;
+  color: #fff;
+  background: #16a34a;
+  cursor: pointer;
+}
+
+.export-button:hover {
+  background: #15803d;
+}
+
+.export-button:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.export-button:focus-visible {
+  outline: 3px solid #93c5fd;
+  outline-offset: 2px;
+}

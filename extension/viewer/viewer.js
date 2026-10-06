@@ -31,6 +31,8 @@ let maskedAreas = {};
 let joinedSteps = [];
 // Кадры скриншотов (ключ "crops"): { [id шага со скриншотом]: рамка в долях снимка }
 let crops = {};
+// Последнее показанное состояние: из него собирается выгружаемый документ (viewer/export.js)
+let current = { groups: [], shotOf: () => null, rawSteps: [] };
 let mode = null;
 
 document.title = t("viewerTitle");
@@ -387,10 +389,23 @@ function renderDebug(steps) {
   return debug;
 }
 
+// Слои общего скриншота группы — одинаковые на экране и в выгруженном документе:
+// рамки шагов с номерами, области размытия со всех шагов группы и кадр
+function groupLayers(group) {
+  const multi = group.items.length > 1;
+  const frames = group.items
+    .map(({ step, number }) => ({ rect: rectOnShot(step, group.shotStep), number: multi ? number : null }))
+    .filter((frame) => frame.rect);
+  // Области, скрытые на скриншотах любых шагов группы, должны быть скрыты и на общем скриншоте
+  const areas = group.items.flatMap(({ step }) => areasOf(maskedAreas, step.id)
+    .map((area, index) => ({ stepId: step.id, index, area: areaOnShot(area, step, group.shotStep) }))
+    .filter(({ area }) => area));
+  return { multi, frames, areas, crop: crops[group.shotStep.id] || null };
+}
+
 // Карточка группы шагов: один шаг или несколько шагов под общим скриншотом последнего шага
 function renderGroup(group, isFirstGroup, shotOf) {
-  const multi = group.items.length > 1;
-  const crop = crops[group.shotStep.id] || null;
+  const { multi, frames, areas, crop } = groupLayers(group);
   const card = el("li", multi ? "step group" : "step");
   // Значения отмеченных полей не показываем нигде, включая технические подробности
   const shown = group.items.map(({ step, number }) => ({ raw: step, step: maskStep(step, masks), number }));
@@ -424,13 +439,6 @@ function renderGroup(group, isFirstGroup, shotOf) {
     card.append(list);
   }
 
-  const frames = group.items
-    .map(({ step, number }) => ({ rect: rectOnShot(step, group.shotStep), number: multi ? number : null }))
-    .filter((frame) => frame.rect);
-  // Области, скрытые на скриншотах любых шагов группы, должны быть скрыты и на общем скриншоте
-  const areas = group.items.flatMap(({ step }) => areasOf(maskedAreas, step.id)
-    .map((area, index) => ({ stepId: step.id, index, area: areaOnShot(area, step, group.shotStep) }))
-    .filter(({ area }) => area));
   const dataUrl = shotOf(group.shotStep);
   if (!multi && frames.length && !rectInCrop(frames[0].rect, group.shotStep.viewport, crop)) {
     card.append(el("p", "not-on-shot", t("viewerFrameOutsideCrop")));
@@ -499,12 +507,14 @@ async function render() {
 
   emptyEl.hidden = rawSteps.length > 0;
   const groups = buildGroups(steps, joinedSteps);
+  current = { groups, shotOf, rawSteps };
   renderStats(steps, dropped, groups);
   stepsEl.replaceChildren(...groups.map((group, i) => renderGroup(group, i === 0, shotOf)));
 
   // Раздел сохраняет состояние «раскрыт / свёрнут» при обновлении во время записи
   droppedEl.hidden = dropped.length === 0;
   droppedListEl.replaceChildren(...dropped.map(({ step, reason }) => renderDroppedStep(step, reason, shotOf(step))));
+  document.dispatchEvent(new Event("viewer-rendered"));
 }
 
 render();

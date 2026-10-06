@@ -479,6 +479,55 @@
   "noiseListOpenedNoChoice": {
     "message": "список открыт, но вариант не выбран"
   },
+  "exportTitleLabel": {
+    "message": "Название инструкции"
+  },
+  "exportDefaultTitle": {
+    "message": "Инструкция"
+  },
+  "exportHtml": {
+    "message": "Скачать HTML"
+  },
+  "exportDocx": {
+    "message": "Скачать Word"
+  },
+  "exportMeta": {
+    "message": "Дата: $DATE$",
+    "placeholders": {
+      "date": {
+        "content": "$1",
+        "example": "07.10.2026"
+      }
+    }
+  },
+  "exportProgress": {
+    "message": "Готовим скриншоты: $DONE$ из $TOTAL$…",
+    "placeholders": {
+      "done": {
+        "content": "$1",
+        "example": "2"
+      },
+      "total": {
+        "content": "$2",
+        "example": "5"
+      }
+    }
+  },
+  "exportDone": {
+    "message": "Готово: файл сохранён в папку загрузок"
+  },
+  "exportNothing": {
+    "message": "Нет шагов для выгрузки"
+  },
+  "exportFailed": {
+    "message": "Не удалось выгрузить: $ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1",
+        "example": "ошибка"
+      }
+    }
+  },
   "badgeRecording": {
     "message": "REC",
     "description": "Короткая метка на значке расширения во время записи (не длиннее 4 символов)."
