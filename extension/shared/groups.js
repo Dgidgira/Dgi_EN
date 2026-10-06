@@ -46,6 +46,34 @@ function rectOnShot(step, shotStep) {
   return visible ? rect : null;
 }
 
+// Произвольная область (FR-6), выделенная на скриншоте шага группы, на общем скриншоте группы.
+// Область в долях снимка → в пиксели видимой области → поправка на прокрутку (если страница та же)
+// → в доли общего снимка с обрезкой по краям. null — область целиком за краем общего снимка.
+// Скрытые автором данные не должны снова появиться после объединения, поэтому без данных
+// о размере окна область переносится как есть.
+function areaOnShot(area, step, shotStep) {
+  if (step.id === shotStep.id) return area;
+  const from = step.viewport;
+  const to = shotStep.viewport;
+  if (!from || !to) return area;
+
+  let x = area.x * from.width;
+  let y = area.y * from.height;
+  if (step.page?.url === shotStep.page?.url) {
+    x += (step.scroll?.x ?? 0) - (shotStep.scroll?.x ?? 0);
+    y += (step.scroll?.y ?? 0) - (shotStep.scroll?.y ?? 0);
+  }
+  const clamp = (value) => Math.min(1, Math.max(0, value));
+  const x1 = clamp(x / to.width);
+  const y1 = clamp(y / to.height);
+  const x2 = clamp((x + area.width * from.width) / to.width);
+  const y2 = clamp((y + area.height * from.height) / to.height);
+  if (x2 <= x1 || y2 <= y1) return null;
+  // Округление, как при сохранении области: без хвостов вроде 0.19999999999999998
+  const round = (value) => Math.round(value * 10000) / 10000;
+  return { x: round(x1), y: round(y1), width: round(x2 - x1), height: round(y2 - y1) };
+}
+
 // Сколько скриншотов будет в инструкции
 function countShots(groups) {
   return groups.length;

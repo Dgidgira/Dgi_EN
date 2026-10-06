@@ -56,6 +56,21 @@ expect("старые записи без прокрутки: без поправ
   rectOnShot(step("p", { scroll: undefined }), step("q", { scroll: undefined })), { x: 100, y: 100, width: 200, height: 30 });
 expect("шаг без рамки", rectOnShot(step("p", { rect: undefined }), last), null);
 
+// --- Произвольные области с ранних шагов группы на общем скриншоте
+const area = { x: 0.1, y: 0.5, width: 0.2, height: 0.1 };
+const shot = step("z", { scroll: { x: 0, y: 160 } });
+expect("область своего шага без изменений", areaOnShot(area, shot, shot), area);
+expect("без прокрутки — на том же месте", areaOnShot(area, step("p", { scroll: { x: 0, y: 160 } }), shot), area);
+// 0.5 * 800 = 400 px; страница прокручена на 160 px дальше → 240 px = 0.3
+const moved = areaOnShot(area, step("p", { scroll: { x: 0, y: 0 } }), shot);
+expect("поправка на прокрутку", [moved.x, Math.round(moved.y * 1000) / 1000, moved.width, Math.round(moved.height * 1000) / 1000], [0.1, 0.3, 0.2, 0.1]);
+const cut = areaOnShot({ x: 0.1, y: 0.1, width: 0.2, height: 0.2 }, step("p", { scroll: { x: 0, y: 0 } }), shot);
+expect("частично за верхним краем → обрезана", [Math.round(cut.y * 1000) / 1000, Math.round(cut.height * 1000) / 1000], [0, 0.1]);
+expect("целиком за краем → не показывается", areaOnShot({ x: 0.1, y: 0, width: 0.2, height: 0.1 }, step("p", { scroll: { x: 0, y: 0 } }), shot), null);
+expect("другая страница → без поправки на прокрутку",
+  areaOnShot(area, step("p", { page: { url: FORM + "#/card/2" }, scroll: { x: 0, y: 0 } }), shot), area);
+expect("старая запись без размера окна → как есть", areaOnShot(area, step("p", { viewport: undefined }), shot), area);
+
 const result = failures.length
   ? `ПРОВАЛ: ${failures.length} из ${checks}\n` + failures.join("\n")
   : `OK: ${checks} проверок пройдено`;

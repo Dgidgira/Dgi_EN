@@ -86,8 +86,14 @@ function ownFrames(step) {
   return visible ? [{ rect: step.rect, number: null }] : [];
 }
 
-// frames — рамки на снимке: [{ rect, number }]; у группы шагов на рамке номер шага
-function renderShot(step, dataUrl, frames = ownFrames(step)) {
+// Размытые области своего скриншота: [{ stepId, index, area }]
+function ownAreas(step) {
+  return areasOf(maskedAreas, step.id).map((area, index) => ({ stepId: step.id, index, area }));
+}
+
+// frames — рамки на снимке: [{ rect, number }]; у группы шагов на рамке номер шага.
+// areas — размытые области: у группы сюда входят и области, выделенные на скриншотах ранних шагов
+function renderShot(step, dataUrl, frames = ownFrames(step), areas = ownAreas(step)) {
   if (!dataUrl) {
     const reason = step.screenshotError ? `: ${step.screenshotError}` : "";
     return el("p", "no-shot", t("viewerNoScreenshot") + reason);
@@ -107,7 +113,7 @@ function renderShot(step, dataUrl, frames = ownFrames(step)) {
       wrap.append(mask);
     }
   }
-  areasOf(maskedAreas, step.id).forEach((area, index) => wrap.append(renderArea(step.id, area, index)));
+  for (const { stepId, index, area } of areas) wrap.append(renderArea(stepId, area, index));
 
   for (const { rect, number } of frames) {
     const frame = el("div", "shot-highlight");
@@ -121,7 +127,8 @@ function renderShot(step, dataUrl, frames = ownFrames(step)) {
   return wrap;
 }
 
-// Размытая произвольная область; в режиме выделения у неё есть кнопка удаления
+// Размытая произвольная область; в режиме выделения у неё есть кнопка удаления.
+// stepId и index — где область хранится (у шага, на скриншоте которого её выделили)
 function renderArea(stepId, area, index) {
   const mask = el("div", "shot-mask area");
   Object.assign(mask.style, fractionStyle(area));
@@ -258,7 +265,11 @@ function renderGroup(group, isFirstGroup, shotOf) {
   const frames = group.items
     .map(({ step, number }) => ({ rect: rectOnShot(step, group.shotStep), number: multi ? number : null }))
     .filter((frame) => frame.rect);
-  card.append(renderShot(group.shotStep, shotOf(group.shotStep), frames));
+  // Области, скрытые на скриншотах любых шагов группы, должны быть скрыты и на общем скриншоте
+  const areas = group.items.flatMap(({ step }) => areasOf(maskedAreas, step.id)
+    .map((area, index) => ({ stepId: step.id, index, area: areaOnShot(area, step, group.shotStep) }))
+    .filter(({ area }) => area));
+  card.append(renderShot(group.shotStep, shotOf(group.shotStep), frames, areas));
   card.append(renderDebug(shown.map(({ step }) => step)));
   return card;
 }
