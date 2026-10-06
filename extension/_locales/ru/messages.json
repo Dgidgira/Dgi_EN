@@ -249,6 +249,28 @@
       }
     }
   },
+  "describeMenu": {
+    "message": "В меню «$LABEL$» выберите «$VALUE$»",
+    "placeholders": {
+      "label": {
+        "content": "$1",
+        "example": "Действия"
+      },
+      "value": {
+        "content": "$2",
+        "example": "Редактировать"
+      }
+    }
+  },
+  "describeMenuNoLabel": {
+    "message": "В выделенном меню выберите «$VALUE$»",
+    "placeholders": {
+      "value": {
+        "content": "$2",
+        "example": "Редактировать"
+      }
+    }
+  },
   "describeCheckboxOn": {
     "message": "Отметьте «$LABEL$»",
     "placeholders": {
@@ -287,6 +309,39 @@
   },
   "describeUnknown": {
     "message": "Выполните действие с выделенным элементом"
+  },
+  "viewerDroppedStats": {
+    "message": "Отсеяно шагов: $COUNT$",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "viewerDroppedTitle": {
+    "message": "Отсеянные шаги"
+  },
+  "viewerDroppedHint": {
+    "message": "Эти шаги не попадут в инструкцию. Проверьте, не отсеяно ли нужное."
+  },
+  "noiseRepeatedClick": {
+    "message": "повторный клик по тому же элементу"
+  },
+  "noiseRepeatedInput": {
+    "message": "промежуточный ввод: в то же поле потом введено другое значение"
+  },
+  "noiseMergedIntoChoice": {
+    "message": "открытие списка объединено с выбором варианта"
+  },
+  "noiseSearchText": {
+    "message": "текст для поиска в списке: объединён с выбором варианта"
+  },
+  "noiseListClosed": {
+    "message": "закрытие списка без выбора"
+  },
+  "noiseListOpenedNoChoice": {
+    "message": "список открыт, но вариант не выбран"
   },
   "badgeRecording": {
     "message": "REC",

@@ -4,7 +4,7 @@
 // Источники подписи, которые понятны читателю инструкции. Атрибут name — техническое имя поля
 // (например, "extra_field"), в тексте инструкции его не показываем.
 const READABLE_LABEL_SOURCES = new Set([
-  "aria-labelledby", "aria-label", "label", "text", "title", "placeholder", "alt",
+  "aria-labelledby", "aria-label", "label", "text", "title", "placeholder", "alt", "nearby-label",
 ]);
 
 const MAX_VALUE_LENGTH = 100;
@@ -51,6 +51,10 @@ function describeStep(step, t = (key, subs) => chrome.i18n.getMessage(key, subs)
       break;
     case "select":
       key = "describeSelect";
+      substitutions = [label, value];
+      break;
+    case "menu":
+      key = "describeMenu";
       substitutions = [label, value];
       break;
     case "checkbox":

@@ -39,6 +39,8 @@ const cases = [
   [{ ...step("input", "Поиск", "label", "", { tag: "input", inputType: "search" }), pressedEnter: true }, "Очистите поле «Поиск» и нажмите Enter", true],
   [step("select", "Тип происшествия", "label", "Пожар", { tag: "select" }), "В списке «Тип происшествия» выберите «Пожар»", true],
   [step("select", "", "none", "Пожар", { tag: "select" }), "В выделенном списке выберите «Пожар»", false],
+  [step("menu", "Действия", "text", "Редактировать", { tag: "button", role: "menuitem" }), "В меню «Действия» выберите «Редактировать»", true],
+  [step("input", "Без подписи", "nearby-label", "123", { tag: "input", inputType: "text" }), "В поле «Без подписи» введите «123»", true],
   [step("checkbox", "Есть пострадавшие", "label", true, { tag: "input", inputType: "checkbox" }), "Отметьте «Есть пострадавшие»", true],
   [step("checkbox", "Есть пострадавшие", "label", false, { tag: "input", inputType: "checkbox" }), "Снимите отметку «Есть пострадавшие»", true],
   [step("radio", "Высокий", "label", true, { tag: "input", inputType: "radio" }), "Выберите вариант «Высокий»", true],
@@ -64,7 +66,7 @@ cases.forEach(([input, expectedText, expectedUsesLabel], i) => {
 // Для каждого шаблона должен быть вариант без подписи (иначе chrome.i18n вернёт пустую строку)
 const templateBases = [
   "ClickButton", "ClickLink", "ClickTab", "ClickOption", "ClickGeneric",
-  "Input", "InputClear", "InputPassword", "InputEnter", "InputClearEnter", "InputPasswordEnter", "Select", "CheckboxOn", "CheckboxOff", "Radio",
+  "Input", "InputClear", "InputPassword", "InputEnter", "InputClearEnter", "InputPasswordEnter", "Select", "Menu", "CheckboxOn", "CheckboxOff", "Radio",
 ];
 templateBases.forEach((base) => {
   ["", "NoLabel"].forEach((suffix) => {
