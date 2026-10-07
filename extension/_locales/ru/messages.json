@@ -500,6 +500,10 @@
       }
     }
   },
+  "exportFigureLabel": {
+    "message": "Рисунок",
+    "description": "Слово в подписи под скриншотом в документе: «Рисунок 1 – Шаг 1» (ГОСТ 34). Одно слово, без пробелов."
+  },
   "exportProgress": {
     "message": "Готовим скриншоты: $DONE$ из $TOTAL$…",
     "placeholders": {

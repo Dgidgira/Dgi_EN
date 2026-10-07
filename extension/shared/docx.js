@@ -4,19 +4,29 @@
 // описание параметров — docs/docx-styles.md.
 //
 // Модель документа (её собирает страница просмотра):
-// { title, meta, sections: [{ heading, items: [{ label, text }], image: { bytes, width, height } | null }] }
-// label — номер шага («3.») или null; image.bytes — JPEG.
+// { title, meta, sections: [{ heading, items: [{ label, text }], image: { bytes, width, height } | null,
+//   caption: { label, number, name } | null }] }
+// label — номер шага («3.») или null; image.bytes — JPEG;
+// caption — подпись рисунка по ГОСТ 34 / ГОСТ 2.105: «Рисунок 1 – Шаг 1».
 
 // --- Настройки оформления ---
 
+// По умолчанию — оформление корпоративного шаблона (стили «КИСУСС_…»): Times New Roman 12,
+// одинарный интервал, абзацный отступ 1,25 см, выравнивание по ширине, левое поле 30 мм
 const DEFAULT_DOCX_STYLES = {
-  fonts: { body: "Calibri", headings: "Calibri" },
-  sizesPt: { title: 20, heading: 13, body: 11, meta: 9 },
-  colors: { title: "1F2937", heading: "1F2937", body: "1F2937", meta: "6B7280", stepNumber: "DC2626" },
-  page: { size: "A4", orientation: "portrait", marginsMm: { top: 20, right: 15, bottom: 20, left: 20 } },
-  spacing: { afterParagraphPt: 4, afterImagePt: 14, beforeHeadingPt: 12, lineSpacing: 1.15 },
-  image: { maxWidthPercent: 100, border: true, borderColor: "D1D5DB" },
+  fonts: { body: "Times New Roman", headings: "Times New Roman" },
+  sizesPt: { title: 13, heading: 12, body: 12, meta: 12, caption: 11, pageNumber: 10 },
+  colors: { title: "000000", heading: "000000", body: "000000", meta: "000000", stepNumber: "000000" },
+  page: { size: "A4", orientation: "portrait", marginsMm: { top: 20, right: 15, bottom: 20, left: 30 } },
+  paragraph: { align: "justify", firstLineIndentMm: 12.5 },
+  title: { align: "center" },
+  spacing: { afterParagraphPt: 0, beforeHeadingPt: 12, beforeImagePt: 6, afterImagePt: 6, afterCaptionPt: 6, lineSpacing: 1 },
+  image: { maxWidthPercent: 100, border: true, borderColor: "D1D5DB", captions: true },
+  header: { pageNumbers: true },
 };
+
+// Выравнивание абзаца: значение настроек → значение Word
+const ALIGN_WORD = { left: "left", center: "center", right: "right", justify: "both" };
 
 // Размеры страниц в twips (1/1440 дюйма)
 const PAGE_SIZES_TWIPS = { A4: { width: 11906, height: 16838 }, Letter: { width: 12240, height: 15840 } };
@@ -26,19 +36,29 @@ const isFont = (v) => typeof v === "string" && v.trim().length > 0 && v.length <
 const isColor = (v) => typeof v === "string" && /^[0-9A-Fa-f]{6}$/.test(v);
 const inRange = (min, max) => (v) => typeof v === "number" && v >= min && v <= max;
 
+const isBoolean = (v) => typeof v === "boolean";
+const isAlign = (v) => typeof v === "string" && Object.hasOwn(ALIGN_WORD, v);
+
 const DOCX_STYLE_RULES = {
   fonts: { body: isFont, headings: isFont },
-  sizesPt: { title: inRange(6, 72), heading: inRange(6, 72), body: inRange(6, 72), meta: inRange(6, 72) },
+  sizesPt: {
+    title: inRange(6, 72), heading: inRange(6, 72), body: inRange(6, 72), meta: inRange(6, 72),
+    caption: inRange(6, 72), pageNumber: inRange(6, 72),
+  },
   colors: { title: isColor, heading: isColor, body: isColor, meta: isColor, stepNumber: isColor },
   page: {
     size: (v) => v in PAGE_SIZES_TWIPS,
     orientation: (v) => v === "portrait" || v === "landscape",
     marginsMm: { top: inRange(0, 100), right: inRange(0, 100), bottom: inRange(0, 100), left: inRange(0, 100) },
   },
+  paragraph: { align: isAlign, firstLineIndentMm: inRange(0, 50) },
+  title: { align: isAlign },
   spacing: {
-    afterParagraphPt: inRange(0, 72), afterImagePt: inRange(0, 72), beforeHeadingPt: inRange(0, 72), lineSpacing: inRange(0.5, 3),
+    afterParagraphPt: inRange(0, 72), beforeHeadingPt: inRange(0, 72), beforeImagePt: inRange(0, 72),
+    afterImagePt: inRange(0, 72), afterCaptionPt: inRange(0, 72), lineSpacing: inRange(0.5, 3),
   },
-  image: { maxWidthPercent: inRange(10, 100), border: (v) => typeof v === "boolean", borderColor: isColor },
+  image: { maxWidthPercent: inRange(10, 100), border: isBoolean, borderColor: isColor, captions: isBoolean },
+  header: { pageNumbers: isBoolean },
 };
 
 // Настройки из файла поверх значений по умолчанию. warnings — что было отброшено и почему
@@ -138,13 +158,28 @@ function drawing(extent, relId, index, styles) {
     `</pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>`;
 }
 
+// Подпись рисунка: «Рисунок 1 – Шаг 1». Номер — поле SEQ, как у подписей, вставленных в самом Word:
+// по ним работает «Список иллюстраций», а Word пересчитывает номера при правке документа
+function captionContent(caption) {
+  const sequence = String(caption.label).replace(/[^\p{L}\p{N}_]/gu, "") || "Figure";
+  return textRun(`${caption.label} `) +
+    `<w:fldSimple w:instr=" SEQ ${sequence} \\* ARABIC ">${textRun(String(caption.number))}</w:fldSimple>` +
+    (caption.name ? textRun(` – ${caption.name}`) : "");
+}
+
+// Верхний колонтитул с номером страницы по центру (как «КИСУСС_колонтитул верхний»)
+function headerXml() {
+  return XML_HEADER + `<w:hdr xmlns:w="${NS_W}"><w:p><w:pPr><w:pStyle w:val="Header"/></w:pPr>` +
+    `<w:fldSimple w:instr=" PAGE ">${textRun("1")}</w:fldSimple></w:p></w:hdr>`;
+}
+
 function documentXml(doc, styles) {
   const page = pageGeometry(styles);
   const body = [];
   body.push(paragraph("Title", textRun(doc.title)));
   if (doc.meta) body.push(paragraph("DocMeta", textRun(doc.meta)));
 
-  // Заголовок и текст шага держатся на одной странице со скриншотом (keepNext)
+  // Заголовок и текст шага держатся на одной странице со скриншотом, скриншот — с подписью (keepNext)
   const keepNext = "<w:keepNext/>";
   const numberProps = `<w:b/><w:color w:val="${styles.colors.stepNumber}"/>`;
   let imageIndex = 0;
@@ -157,12 +192,15 @@ function documentXml(doc, styles) {
     if (section.image) {
       imageIndex += 1;
       const extent = imageExtent(section.image, styles);
-      body.push(paragraph("StepImage", drawing(extent, `rIdImage${imageIndex}`, imageIndex, styles)));
+      const caption = styles.image.captions && section.caption;
+      body.push(paragraph("StepImage", drawing(extent, `rIdImage${imageIndex}`, imageIndex, styles), caption ? keepNext : ""));
+      if (caption) body.push(paragraph("Caption", captionContent(caption)));
     }
   }
 
   const m = page.margins;
-  const sectPr = `<w:sectPr><w:pgSz w:w="${page.width}" w:h="${page.height}"` +
+  const headerRef = styles.header.pageNumbers ? '<w:headerReference w:type="default" r:id="rIdHeader1"/>' : "";
+  const sectPr = `<w:sectPr>${headerRef}<w:pgSz w:w="${page.width}" w:h="${page.height}"` +
     (styles.page.orientation === "landscape" ? ' w:orient="landscape"' : "") + "/>" +
     `<w:pgMar w:top="${m.top}" w:right="${m.right}" w:bottom="${m.bottom}" w:left="${m.left}" w:header="709" w:footer="709" w:gutter="0"/>` +
     "</w:sectPr>";
@@ -172,30 +210,40 @@ function documentXml(doc, styles) {
     `<w:body>${body.join("")}${sectPr}</w:body></w:document>`;
 }
 
+// Стили повторяют шаблон: Normal ≈ «КИСУСС_текст основной», Heading1 ≈ «КИСУСС_заголовок 2ур»,
+// Title ≈ «КИСУСС_заголовок без номера», StepImage ≈ «КИСУСС_рисунок положение»,
+// Caption ≈ «КИСУСС_рисунок название», Header ≈ «КИСУСС_колонтитул верхний»
 function stylesXml(styles) {
-  const { fonts, sizesPt, colors, spacing } = styles;
+  const { fonts, sizesPt, colors, spacing, paragraph: para } = styles;
   const fontsXml = (font) => `<w:rFonts w:ascii="${escapeXml(font)}" w:hAnsi="${escapeXml(font)}" w:cs="${escapeXml(font)}" w:eastAsia="${escapeXml(font)}"/>`;
+  const size = (pt) => `<w:sz w:val="${ptToHalfPoints(pt)}"/><w:szCs w:val="${ptToHalfPoints(pt)}"/>`;
   const line = Math.round(spacing.lineSpacing * 240);
+  const noIndent = '<w:ind w:firstLine="0"/>';
+  const centered = `${noIndent}<w:jc w:val="center"/>`;
   const style = (id, name, pPr, rPr) =>
     `<w:style w:type="paragraph" w:styleId="${id}"><w:name w:val="${name}"/><w:basedOn w:val="Normal"/><w:qFormat/>` +
     `<w:pPr>${pPr}</w:pPr><w:rPr>${rPr}</w:rPr></w:style>`;
 
   return XML_HEADER + `<w:styles xmlns:w="${NS_W}">` +
     `<w:docDefaults><w:rPrDefault><w:rPr>${fontsXml(fonts.body)}` +
-    `<w:color w:val="${colors.body}"/><w:sz w:val="${ptToHalfPoints(sizesPt.body)}"/><w:szCs w:val="${ptToHalfPoints(sizesPt.body)}"/>` +
+    `<w:color w:val="${colors.body}"/>${size(sizesPt.body)}` +
     `<w:lang w:val="ru-RU"/></w:rPr></w:rPrDefault>` +
     `<w:pPrDefault><w:pPr><w:spacing w:after="${ptToTwips(spacing.afterParagraphPt)}" w:line="${line}" w:lineRule="auto"/></w:pPr></w:pPrDefault>` +
     `</w:docDefaults>` +
-    `<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/></w:style>` +
-    style("Title", "Title", `<w:spacing w:after="${ptToTwips(6)}"/>`,
-      `${fontsXml(fonts.headings)}<w:b/><w:color w:val="${colors.title}"/><w:sz w:val="${ptToHalfPoints(sizesPt.title)}"/>`) +
-    style("DocMeta", "Document Meta", `<w:spacing w:after="${ptToTwips(12)}"/>`,
-      `<w:color w:val="${colors.meta}"/><w:sz w:val="${ptToHalfPoints(sizesPt.meta)}"/>`) +
+    `<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/>` +
+    `<w:pPr><w:ind w:firstLine="${mmToTwips(para.firstLineIndentMm)}"/><w:jc w:val="${ALIGN_WORD[para.align]}"/></w:pPr></w:style>` +
+    style("Title", "Title", `<w:keepNext/><w:spacing w:after="${ptToTwips(6)}"/>${noIndent}<w:jc w:val="${ALIGN_WORD[styles.title.align]}"/>`,
+      `${fontsXml(fonts.headings)}<w:b/><w:color w:val="${colors.title}"/>${size(sizesPt.title)}`) +
+    style("DocMeta", "Document Meta", `<w:spacing w:after="${ptToTwips(12)}"/>${noIndent}<w:jc w:val="${ALIGN_WORD[styles.title.align]}"/>`,
+      `<w:color w:val="${colors.meta}"/>${size(sizesPt.meta)}`) +
     style("Heading1", "heading 1",
       `<w:keepNext/><w:spacing w:before="${ptToTwips(spacing.beforeHeadingPt)}" w:after="${ptToTwips(spacing.afterParagraphPt)}"/><w:outlineLvl w:val="0"/>`,
-      `${fontsXml(fonts.headings)}<w:b/><w:color w:val="${colors.heading}"/><w:sz w:val="${ptToHalfPoints(sizesPt.heading)}"/>`) +
+      `${fontsXml(fonts.headings)}<w:b/><w:color w:val="${colors.heading}"/>${size(sizesPt.heading)}`) +
     style("StepText", "Step Text", "", "") +
-    style("StepImage", "Step Image", `<w:jc w:val="center"/><w:spacing w:after="${ptToTwips(spacing.afterImagePt)}"/>`, "") +
+    style("StepImage", "Step Image",
+      `<w:spacing w:before="${ptToTwips(spacing.beforeImagePt)}" w:after="${ptToTwips(spacing.afterImagePt)}"/>${centered}`, "<w:noProof/>") +
+    style("Caption", "caption", `<w:spacing w:after="${ptToTwips(spacing.afterCaptionPt)}"/>${centered}`, size(sizesPt.caption)) +
+    style("Header", "header", `<w:spacing w:after="0"/>${centered}`, size(sizesPt.pageNumber)) +
     `</w:styles>`;
 }
 
@@ -213,6 +261,7 @@ function coreXml(doc, date) {
 // Все файлы пакета .docx: [{ name, data }]
 function docxFiles(doc, styles, date = new Date()) {
   const images = doc.sections.filter((section) => section.image).map((section) => section.image);
+  const header = styles.header.pageNumbers;
   const contentTypes = XML_HEADER +
     '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
     '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
@@ -221,6 +270,7 @@ function docxFiles(doc, styles, date = new Date()) {
     '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>' +
     '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>' +
     '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>' +
+    (header ? '<Override PartName="/word/header1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/>' : "") +
     "</Types>";
   const rootRels = XML_HEADER +
     '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
@@ -230,6 +280,7 @@ function docxFiles(doc, styles, date = new Date()) {
   const documentRels = XML_HEADER +
     '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
     '<Relationship Id="rIdStyles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>' +
+    (header ? '<Relationship Id="rIdHeader1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/header" Target="header1.xml"/>' : "") +
     images.map((_, i) =>
       `<Relationship Id="rIdImage${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/image${i + 1}.jpeg"/>`).join("") +
     "</Relationships>";
@@ -240,6 +291,7 @@ function docxFiles(doc, styles, date = new Date()) {
     { name: "docProps/core.xml", data: coreXml(doc, date) },
     { name: "word/document.xml", data: documentXml(doc, styles) },
     { name: "word/styles.xml", data: stylesXml(styles) },
+    ...(header ? [{ name: "word/header1.xml", data: headerXml() }] : []),
     { name: "word/_rels/document.xml.rels", data: documentRels },
     ...images.map((image, i) => ({ name: `word/media/image${i + 1}.jpeg`, data: image.bytes })),
   ];

@@ -30,13 +30,17 @@ const doc = {
   title: "Регистрация происшествия <script>alert(1)</script> & проверка",
   meta: "Дата: 07.10.2026",
   sections: [
-    { heading: "Шаг 1", items: [{ label: null, text: "В поле «Фамилия» введите «<b>Тестов</b>»" }], image: { dataUrl: PIXEL, width: 800, height: 450 } },
+    {
+      heading: "Шаг 1", items: [{ label: null, text: "В поле «Фамилия» введите «<b>Тестов</b>»" }], image: { dataUrl: PIXEL, width: 800, height: 450 },
+      caption: { label: "Рисунок", number: 1, name: "Шаг 1" },
+    },
     {
       heading: "Шаги 2–3",
       items: [{ label: "2.", text: "В поле «Телефон заявителя» введите «***»" }, { label: "3.", text: "Нажмите кнопку «Сохранить»" }],
       image: { dataUrl: PIXEL, width: 800, height: 450 },
+      caption: { label: "Рисунок", number: 2, name: "Шаги 2–3" },
     },
-    { heading: "Шаг 4", items: [{ label: null, text: "Перейдите по ссылке «Справка»" }], image: null },
+    { heading: "Шаг 4", items: [{ label: null, text: "Перейдите по ссылке «Справка»" }], image: null, caption: null },
   ],
 };
 const { styles } = resolveDocxStyles({ fonts: { body: 'Times "New" Roman' }, page: { orientation: "landscape" } });
@@ -49,15 +53,21 @@ expectTrue("группа — список с номерами", html.includes('<
 expectTrue("картинки встроены", (html.match(/<img src="data:image\/jpeg;base64,/g) || []).length === 2);
 expectTrue("шаг без картинки без img", !html.split("Шаг 4")[1].includes("<img"));
 expectTrue("нет внешних ссылок", !/(src|href)="(?!data:)/.test(html) && !/url\(/.test(html) && !/@import/.test(html));
-expectTrue("шрифт из настроек, без кавычек внутри", html.includes('"Times New Roman", "Segoe UI"'));
-expectTrue("страница для печати из настроек", html.includes("@page { size: A4 landscape; margin: 20mm 15mm 20mm 20mm; }"));
+expectTrue("шрифт из настроек, без кавычек внутри", html.includes('"Times New Roman", "Liberation Serif", serif'));
+expectTrue("страница для печати из настроек, номер страницы сверху",
+  html.includes("@page { size: A4 landscape; margin: 20mm 15mm 20mm 30mm; @top-center { content: counter(page);"));
+expectTrue("подписи рисунков по ГОСТ под скриншотом",
+  html.includes('alt="Шаг 1"><figcaption>Рисунок 1 – Шаг 1</figcaption></figure>') && html.includes("<figcaption>Рисунок 2 – Шаги 2–3</figcaption>"));
+expectTrue("абзацный отступ и выравнивание по ширине", html.includes("text-indent: 12.5mm; text-align: justify;"));
+const plainHtml = buildHtml(doc, resolveDocxStyles({ image: { captions: false }, header: { pageNumbers: false } }).styles);
+expectTrue("без подписей и номеров страниц", !plainHtml.includes("<figcaption>") && !plainHtml.includes("@top-center"));
 expectTrue("кодировка и язык", html.includes('<meta charset="utf-8">') && html.includes('<html lang="ru">'));
 
 const path = $.NSTemporaryDirectory().js + "html-export-test-" + Date.now() + ".html";
 $.NSString.alloc.initWithUTF8String(html).writeToFileAtomicallyEncodingError(path, true, $.NSUTF8StringEncoding, null);
-// xmllint --html знает только HTML 4, поэтому теги section и figure для него «неизвестные»: такие сообщения пропускаем
+// xmllint --html знает только HTML 4, поэтому теги section, figure и figcaption для него «неизвестные»: такие сообщения пропускаем
 const report = shell(`xmllint --html --noout '${path}' 2>&1; true`);
-const errors = report.split(/\r|\n/).filter((line) => line.includes("error") && !/Tag (section|figure) invalid/.test(line));
+const errors = report.split(/\r|\n/).filter((line) => line.includes("error") && !/Tag (section|figure|figcaption) invalid/.test(line));
 expectTrue("HTML разбирается без ошибок", errors.length === 0, "\n" + errors.join("\n"));
 shell(`rm -f '${path}'`);
 

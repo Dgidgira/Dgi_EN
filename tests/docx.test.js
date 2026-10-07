@@ -76,20 +76,26 @@ expect("CRC-32 эталонной строки", crc32(utf8Encode("123456789")).
 
 // --- Настройки оформления
 const defaults = resolveDocxStyles(undefined);
-expect("без файла — значения по умолчанию", defaults.styles.fonts.body, "Calibri");
+expect("без файла — оформление шаблона: Times New Roman 12", [defaults.styles.fonts.body, defaults.styles.sizesPt.body], ["Times New Roman", 12]);
 expect("без файла — без предупреждений", defaults.warnings, []);
-const custom = resolveDocxStyles({ fonts: { body: "Times New Roman" }, colors: { stepNumber: "00aa00" }, page: { orientation: "landscape" } });
-expect("свой шрифт", custom.styles.fonts.body, "Times New Roman");
-expect("шрифт заголовков остался по умолчанию", custom.styles.fonts.headings, "Calibri");
+const custom = resolveDocxStyles({ fonts: { body: "Arial" }, colors: { stepNumber: "00aa00" }, page: { orientation: "landscape" }, paragraph: { align: "left" } });
+expect("свой шрифт", custom.styles.fonts.body, "Arial");
+expect("шрифт заголовков остался по умолчанию", custom.styles.fonts.headings, "Times New Roman");
 expect("цвет приводится к верхнему регистру", custom.styles.colors.stepNumber, "00AA00");
-const broken = resolveDocxStyles({ sizesPt: { body: 500 }, colors: { title: "red" }, page: { size: "A3", marginsMm: { left: "20" } } });
-expect("неверные значения → по умолчанию", [broken.styles.sizesPt.body, broken.styles.colors.title, broken.styles.page.size, broken.styles.page.marginsMm.left],
-  [11, "1F2937", "A4", 20]);
-expect("по предупреждению на каждое неверное значение", broken.warnings.length, 4);
+expect("своё выравнивание, отступ по умолчанию", [custom.styles.paragraph.align, custom.styles.paragraph.firstLineIndentMm], ["left", 12.5]);
+const broken = resolveDocxStyles({
+  sizesPt: { body: 500 }, colors: { title: "red" }, page: { size: "A3", marginsMm: { left: "20" } },
+  paragraph: { align: "both" }, header: { pageNumbers: "да" },
+});
+expect("неверные значения → по умолчанию",
+  [broken.styles.sizesPt.body, broken.styles.colors.title, broken.styles.page.size, broken.styles.page.marginsMm.left,
+    broken.styles.paragraph.align, broken.styles.header.pageNumbers],
+  [12, "000000", "A4", 30, "justify", true]);
+expect("по предупреждению на каждое неверное значение", broken.warnings.length, 6);
 
 // --- Геометрия страницы и картинок
 const a4 = pageGeometry(defaults.styles);
-expect("A4: ширина текста между полями 20 и 15 мм", a4.textWidth, 11906 - 1134 - 850);
+expect("A4: ширина текста между полями 30 и 15 мм", a4.textWidth, 11906 - 1701 - 850);
 expect("альбомная: ширина и высота меняются местами", [pageGeometry(custom.styles).width, pageGeometry(custom.styles).height], [16838, 11906]);
 const wide = imageExtent({ width: 1600, height: 900 }, defaults.styles);
 expect("широкая картинка ужимается до ширины текста", wide.cx, a4.textWidth * 635);
@@ -102,7 +108,10 @@ const doc = {
   title: "Регистрация происшествия <тест> & проверка",
   meta: "Дата: 07.10.2026",
   sections: [
-    { heading: "Шаг 1", items: [{ label: null, text: "В поле «Фамилия» введите «Тестов»" }], image: { bytes: jpeg, width: 4, height: 3 } },
+    {
+      heading: "Шаг 1", items: [{ label: null, text: "В поле «Фамилия» введите «Тестов»" }], image: { bytes: jpeg, width: 4, height: 3 },
+      caption: { label: "Рисунок", number: 1, name: "Шаг 1" },
+    },
     {
       heading: "Шаги 2–3",
       items: [
@@ -110,15 +119,35 @@ const doc = {
         { label: "3.", text: "Нажмите кнопку «Сохранить»" },
       ],
       image: { bytes: jpeg, width: 4, height: 3 },
+      caption: { label: "Рисунок", number: 2, name: "Шаги 2–3" },
     },
-    { heading: "Шаг 4", items: [{ label: null, text: "Перейдите по ссылке «Справка»" }], image: null },
+    { heading: "Шаг 4", items: [{ label: null, text: "Перейдите по ссылке «Справка»" }], image: null, caption: null },
   ],
 };
 const files = docxFiles(doc, defaults.styles, new Date(2026, 9, 7, 12, 0, 0));
 expect("состав пакета", files.map((f) => f.name), [
-  "[Content_Types].xml", "_rels/.rels", "docProps/core.xml", "word/document.xml", "word/styles.xml",
+  "[Content_Types].xml", "_rels/.rels", "docProps/core.xml", "word/document.xml", "word/styles.xml", "word/header1.xml",
   "word/_rels/document.xml.rels", "word/media/image1.jpeg", "word/media/image2.jpeg",
 ]);
+const part = (name, list = files) => list.find((f) => f.name === name).data;
+
+// --- Оформление по шаблону
+const stylesPart = part("word/styles.xml");
+expectTrue("основной текст: отступ 1,25 см и по ширине", stylesPart.includes('<w:ind w:firstLine="709"/><w:jc w:val="both"/>'));
+expectTrue("основной текст: одинарный интервал, без интервала после абзаца", stylesPart.includes('<w:spacing w:after="0" w:line="240" w:lineRule="auto"/>'));
+expectTrue("подпись рисунка: 11 pt по центру", /w:styleId="Caption">.*?<w:jc w:val="center"\/>.*?<w:sz w:val="22"\/>/.test(stylesPart));
+const documentPart = part("word/document.xml");
+expectTrue("левое поле 30 мм", documentPart.includes('w:left="1701"'));
+expectTrue("колонтитул подключён к разделу", documentPart.includes('<w:headerReference w:type="default" r:id="rIdHeader1"/>'));
+expectTrue("номер шага чёрный полужирный", documentPart.includes('<w:rPr><w:b/><w:color w:val="000000"/></w:rPr><w:t xml:space="preserve">2. </w:t>'));
+expect("подписи — поле SEQ Рисунок", (documentPart.match(/<w:fldSimple w:instr=" SEQ Рисунок \\\* ARABIC ">/g) || []).length, 2);
+expectTrue("подпись идёт сразу после скриншота", /<\/w:drawing><\/w:r><\/w:p><w:p><w:pPr><w:pStyle w:val="Caption"\/>/.test(documentPart));
+expectTrue("номер страницы в колонтитуле", part("word/header1.xml").includes('<w:fldSimple w:instr=" PAGE ">'));
+
+const plain = docxFiles(doc, resolveDocxStyles({ image: { captions: false }, header: { pageNumbers: false } }).styles);
+expectTrue("без подписей и номеров страниц",
+  !part("word/document.xml", plain).includes("Caption") && !plain.some((f) => f.name === "word/header1.xml") &&
+  !part("word/document.xml", plain).includes("headerReference") && !part("[Content_Types].xml", plain).includes("header"));
 
 const dir = $.NSTemporaryDirectory().js + "docx-test-" + Date.now();
 shell(`mkdir -p '${dir}/parts'`);
@@ -130,16 +159,18 @@ try { shell(`unzip -t '${docxPath}'`); } catch (e) { unzipOk = false; failures.p
 expectTrue("архив цел (unzip -t)", unzipOk);
 
 shell(`cd '${dir}/parts' && unzip -q '${docxPath}'`);
-for (const part of ["[Content_Types].xml", "_rels/.rels", "docProps/core.xml", "word/document.xml", "word/styles.xml", "word/_rels/document.xml.rels"]) {
+for (const name of ["[Content_Types].xml", "_rels/.rels", "docProps/core.xml", "word/document.xml", "word/styles.xml",
+  "word/header1.xml", "word/_rels/document.xml.rels"]) {
   let ok = true;
-  try { shell(`xmllint --noout '${dir}/parts/${part}'`); } catch (e) { ok = false; failures.push(`xmllint ${part}: ${e.message}`); }
-  expectTrue(`XML без ошибок: ${part}`, ok);
+  try { shell(`xmllint --noout '${dir}/parts/${name}'`); } catch (e) { ok = false; failures.push(`xmllint ${name}: ${e.message}`); }
+  expectTrue(`XML без ошибок: ${name}`, ok);
 }
 
 const text = shell(`textutil -convert txt -stdout '${docxPath}'`);
 for (const expected of [
   "Регистрация происшествия <тест> & проверка", "Дата: 07.10.2026", "Шаг 1", "В поле «Фамилия» введите «Тестов»",
   "Шаги 2–3", "2. В поле «Телефон заявителя» введите «***»", "3. Нажмите кнопку «Сохранить»", "Перейдите по ссылке «Справка»",
+  "Рисунок 1 – Шаг 1", "Рисунок 2 – Шаги 2–3",
 ]) {
   expectTrue(`textutil читает: ${expected}`, text.includes(expected), `\n  текст документа:\n${text}`);
 }

@@ -202,6 +202,7 @@ async function renderExportImage(group, dataUrl) {
 
 async function buildExportDoc(onProgress) {
   const sections = [];
+  let figureNumber = 0;
   for (const [index, group] of current.groups.entries()) {
     onProgress(index + 1, current.groups.length);
     const multi = group.items.length > 1;
@@ -216,7 +217,9 @@ async function buildExportDoc(onProgress) {
     }));
     const dataUrl = current.shotOf(group.shotStep);
     const image = dataUrl ? await renderExportImage(group, dataUrl) : null;
-    sections.push({ heading, items, image });
+    // Подпись рисунка «Рисунок N – Шаг K»: рисунки нумеруются подряд, шаги без скриншота пропускаются
+    const caption = image ? { label: t("exportFigureLabel"), number: ++figureNumber, name: heading } : null;
+    sections.push({ heading, items, image, caption });
   }
   const title = docTitleEl.value.trim() || defaultTitle();
   const meta = t("exportMeta", [new Date().toLocaleDateString("ru-RU")]);

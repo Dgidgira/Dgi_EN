@@ -1,20 +1,22 @@
 {
   "fonts": {
-    "body": "Calibri",
-    "headings": "Calibri"
+    "body": "Times New Roman",
+    "headings": "Times New Roman"
   },
   "sizesPt": {
-    "title": 20,
-    "heading": 13,
-    "body": 11,
-    "meta": 9
+    "title": 13,
+    "heading": 12,
+    "body": 12,
+    "meta": 12,
+    "caption": 11,
+    "pageNumber": 10
   },
   "colors": {
-    "title": "1F2937",
-    "heading": "1F2937",
-    "body": "1F2937",
-    "meta": "6B7280",
-    "stepNumber": "DC2626"
+    "title": "000000",
+    "heading": "000000",
+    "body": "000000",
+    "meta": "000000",
+    "stepNumber": "000000"
   },
   "page": {
     "size": "A4",
@@ -23,18 +25,31 @@
       "top": 20,
       "right": 15,
       "bottom": 20,
-      "left": 20
+      "left": 30
     }
   },
+  "paragraph": {
+    "align": "justify",
+    "firstLineIndentMm": 12.5
+  },
+  "title": {
+    "align": "center"
+  },
   "spacing": {
-    "afterParagraphPt": 4,
-    "afterImagePt": 14,
+    "afterParagraphPt": 0,
     "beforeHeadingPt": 12,
-    "lineSpacing": 1.15
+    "beforeImagePt": 6,
+    "afterImagePt": 6,
+    "afterCaptionPt": 6,
+    "lineSpacing": 1
   },
   "image": {
     "maxWidthPercent": 100,
     "border": true,
-    "borderColor": "D1D5DB"
+    "borderColor": "D1D5DB",
+    "captions": true
+  },
+  "header": {
+    "pageNumbers": true
   }
 }
