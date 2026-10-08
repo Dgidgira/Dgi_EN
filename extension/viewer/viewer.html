@@ -17,6 +17,13 @@
     <button id="export-docx" type="button" class="export-button"></button>
     <span id="export-status" class="tool-note" role="status"></span>
   </div>
+  <div class="project-bar">
+    <button id="project-save" type="button" class="project-button"></button>
+    <button id="project-open" type="button" class="project-button"></button>
+    <input id="project-file" type="file" accept=".json,application/json" hidden>
+    <span id="project-status" class="tool-note" role="status"></span>
+    <p id="project-hint" class="project-hint"></p>
+  </div>
   <div class="toolbar">
     <button id="mask-mode" type="button" class="tool-button" aria-pressed="false"></button>
     <button id="area-mode" type="button" class="tool-button" aria-pressed="false"></button>
@@ -38,7 +45,9 @@
   <script src="../shared/zip.js"></script>
   <script src="../shared/docx.js"></script>
   <script src="../shared/html-export.js"></script>
+  <script src="../shared/project.js"></script>
   <script src="viewer.js"></script>
   <script src="export.js"></script>
+  <script src="project-file.js"></script>
 </body>
 </html>

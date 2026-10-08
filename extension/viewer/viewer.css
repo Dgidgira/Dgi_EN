@@ -555,3 +555,45 @@ h1 {
   outline: 3px solid #93c5fd;
   outline-offset: 2px;
 }
+
+/* Файл проекта (FR-9) */
+.project-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: -8px 0 16px;
+  padding: 0 14px;
+}
+
+.project-button {
+  padding: 6px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  font: inherit;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--card);
+  cursor: pointer;
+}
+
+.project-button:hover {
+  background: #f3f4f6;
+}
+
+.project-button:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.project-button:focus-visible {
+  outline: 3px solid #93c5fd;
+  outline-offset: 2px;
+}
+
+.project-hint {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}

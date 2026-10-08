@@ -532,6 +532,90 @@
       }
     }
   },
+  "projectSave": {
+    "message": "Сохранить проект"
+  },
+  "projectOpen": {
+    "message": "Открыть проект"
+  },
+  "projectHint": {
+    "message": "Файл проекта (.instr.json) — рабочий файл автора: в нём исходные скриншоты без размытия. Не передавайте его читателям, для них выгружайте HTML или Word."
+  },
+  "projectNothing": {
+    "message": "Нет шагов для сохранения"
+  },
+  "projectSaved": {
+    "message": "Проект сохранён в папку загрузок"
+  },
+  "projectSaveFailed": {
+    "message": "Не удалось сохранить проект: $ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1",
+        "example": "ошибка"
+      }
+    }
+  },
+  "projectBusyRecording": {
+    "message": "Остановите запись, чтобы открыть проект"
+  },
+  "projectConfirmReplace": {
+    "message": "Текущая запись (шагов: $COUNT$) будет заменена проектом из файла. Если она нужна, сначала сохраните её. Продолжить?",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },
+  "projectOpened": {
+    "message": "Проект открыт, шагов: $COUNT$",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },
+  "projectOpenFailed": {
+    "message": "Не удалось открыть проект: $ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1",
+        "example": "файл повреждён"
+      }
+    }
+  },
+  "projectErrorNotJson": {
+    "message": "файл повреждён или это не файл проекта"
+  },
+  "projectErrorFormat": {
+    "message": "это не файл проекта инструкции"
+  },
+  "projectErrorNewerVersion": {
+    "message": "файл сохранён более новой версией расширения, обновите расширение"
+  },
+  "projectErrorBroken": {
+    "message": "в файле повреждены данные шагов"
+  },
+  "projectWarnMissingShots": {
+    "message": "без скриншота в файле: $COUNT$",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "1"
+      }
+    }
+  },
+  "projectWarnDropped": {
+    "message": "пропущено повреждённых значений: $COUNT$",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  },
   "badgeRecording": {
     "message": "REC",
     "description": "Короткая метка на значке расширения во время записи (не длиннее 4 символов)."
