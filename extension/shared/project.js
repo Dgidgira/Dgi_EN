@@ -2,7 +2,7 @@
 // В отличие от HTML и Word, в файле исходные скриншоты без размытия, поэтому он только для автора.
 //
 // Формат — JSON:
-// { format, version, savedAt, docTitle, steps, maskedFields, maskedAreas, joinedSteps, crops,
+// { format, version, savedAt, docTitle, steps, maskedFields, maskedAreas, joinedSteps, crops, sections,
 //   shots: { <id шага>: data URL } }
 // Ошибки и предупреждения возвращаются ключами строк из _locales, как причины отсева в normalize.js.
 
@@ -28,6 +28,7 @@ function buildProject(state, shots, savedAt = new Date()) {
     maskedAreas: state.maskedAreas || {},
     joinedSteps: state.joinedSteps || [],
     crops: state.crops || {},
+    sections: state.sections || [],
     shots: projectShots,
   });
 }
@@ -39,13 +40,16 @@ const isFraction = (v) => typeof v === "number" && Number.isFinite(v) && v >= 0 
 // Прямоугольник в долях снимка (маска-область, кадр)
 const isFractionRect = (r) => isPlainObject(r) &&
   isFraction(r.x) && isFraction(r.y) && isFraction(r.width) && isFraction(r.height);
+// Раздел (FR-10): { id, title, timestamp }
+const isSection = (s) => isPlainObject(s) && typeof s.id === "string" && s.id !== "" &&
+  typeof s.title === "string" && s.title.trim() !== "" && typeof s.timestamp === "number" && Number.isFinite(s.timestamp);
 // Скриншоты пишет только расширение: JPEG или PNG в base64
 const isImageDataUrl = (v) => typeof v === "string" && /^data:image\/(jpeg|png);base64,[A-Za-z0-9+/]+={0,2}$/.test(v);
 
 // Разбор и проверка файла проекта.
 // Успех: { ok: true, state: {...ключи хранилища}, shots: { <id шага>: data URL }, warnings: [{ key, count }] }
 // Ошибка: { ok: false, error: <ключ строки> }. Непригодные необязательные данные (маски, кадры,
-// объединение, скриншоты) отбрасываются с предупреждением; повреждённые шаги — ошибка.
+// объединение, разделы, скриншоты) отбрасываются с предупреждением; повреждённые шаги — ошибка.
 function parseProject(text) {
   let raw;
   try {
@@ -94,6 +98,12 @@ function parseProject(text) {
     else dropped += 1;
   }
 
+  const sectionIds = new Set();
+  const sections = Array.isArray(raw.sections)
+    ? keep(raw.sections, (section) => isSection(section) && !sectionIds.has(section.id) && sectionIds.add(section.id))
+      .map(({ id, title, timestamp }) => ({ id, title: title.trim().slice(0, PROJECT_TITLE_MAX), timestamp }))
+    : [];
+
   const shots = {};
   for (const [stepId, dataUrl] of Object.entries(isPlainObject(raw.shots) ? raw.shots : {})) {
     if (ids.has(stepId) && isImageDataUrl(dataUrl)) shots[stepId] = dataUrl;
@@ -110,7 +120,7 @@ function parseProject(text) {
 
   return {
     ok: true,
-    state: { steps, maskedFields, maskedAreas, joinedSteps, crops, docTitle },
+    state: { steps, maskedFields, maskedAreas, joinedSteps, crops, sections, docTitle },
     shots,
     warnings,
   };
