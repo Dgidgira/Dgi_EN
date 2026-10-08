@@ -71,6 +71,23 @@ const errors = report.split(/\r|\n/).filter((line) => line.includes("error") && 
 expectTrue("HTML разбирается без ошибок", errors.length === 0, "\n" + errors.join("\n"));
 shell(`rm -f '${path}'`);
 
+// --- Разделы инструкции (FR-10)
+const chaptered = {
+  title: "С разделами",
+  meta: null,
+  sections: [
+    { heading: "Шаг 1", items: [{ label: null, text: "До раздела" }], image: null, caption: null },
+    { chapter: { number: 1, title: "Вход <в> систему" }, heading: "Шаг 1.1", items: [{ label: null, text: "Введите логин" }],
+      image: { dataUrl: PIXEL, width: 800, height: 450 }, caption: { label: "Рисунок", number: "1.1", name: "Шаг 1.1" } },
+  ],
+};
+const chapterHtml = buildHtml(chaptered, styles);
+expectTrue("раздел — h2 с номером, шаги — h3",
+  chapterHtml.includes('<h2 class="chapter">1 Вход &lt;в&gt; систему</h2>') && chapterHtml.includes('<h3 class="step-heading">Шаг 1.1</h3>') &&
+  chapterHtml.includes('<h3 class="step-heading">Шаг 1</h3>'));
+expectTrue("подпись в разделе", chapterHtml.includes("<figcaption>Рисунок 1.1 – Шаг 1.1</figcaption>"));
+expectTrue("без разделов шаги — h2", html.includes('<h2 class="step-heading">Шаг 1</h2>') && !html.includes('class="chapter"'));
+
 const result = failures.length
   ? `ПРОВАЛ: ${failures.length} из ${checks}\n` + failures.join("\n")
   : `OK: ${checks} проверок пройдено`;

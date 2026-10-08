@@ -176,6 +176,44 @@ for (const expected of [
 }
 shell(`rm -rf '${dir}'`);
 
+// --- Разделы инструкции (FR-10): раздел — заголовок первого уровня, шаг — второго, подписи «Рисунок 2.1»
+const chaptered = {
+  title: "С разделами",
+  meta: null,
+  sections: [
+    { heading: "Шаг 1", items: [{ label: null, text: "До раздела" }], image: { bytes: jpeg, width: 4, height: 3 },
+      caption: { label: "Рисунок", number: 1, name: "Шаг 1" } },
+    { chapter: { number: 1, title: "Вход <в> систему" }, heading: "Шаг 1.1", items: [{ label: null, text: "Введите логин" }],
+      image: { bytes: jpeg, width: 4, height: 3 }, caption: { label: "Рисунок", number: "1.1", name: "Шаг 1.1" } },
+    { heading: "Шаги 1.2–1.3", items: [{ label: "1.2.", text: "Пароль" }, { label: "1.3.", text: "Войти" }],
+      image: { bytes: jpeg, width: 4, height: 3 }, caption: { label: "Рисунок", number: "1.2", name: "Шаги 1.2–1.3" } },
+    { chapter: { number: 2, title: "Заявка" }, heading: "Шаг 2.1", items: [{ label: null, text: "Создайте заявку" }],
+      image: { bytes: jpeg, width: 4, height: 3 }, caption: { label: "Рисунок", number: "2.1", name: "Шаг 2.1" } },
+  ],
+};
+const chapterFiles = docxFiles(chaptered, defaults.styles);
+const chapterDoc = part("word/document.xml", chapterFiles);
+const headings = [...chapterDoc.matchAll(/<w:pStyle w:val="(Heading\d)"\/><\/w:pPr><w:r><w:t xml:space="preserve">([^<]*)</g)]
+  .map((m) => `${m[1]} ${m[2]}`);
+expect("разделы — первый уровень, шаги — второй", headings,
+  ["Heading2 Шаг 1", "Heading1 1 Вход &lt;в&gt; систему", "Heading2 Шаг 1.1", "Heading2 Шаги 1.2–1.3", "Heading1 2 Заявка", "Heading2 Шаг 2.1"]);
+expectTrue("подпись в разделе: номер раздела текстом, номер рисунка — SEQ с перезапуском в разделе",
+  chapterDoc.includes('<w:t xml:space="preserve">Рисунок 2.</w:t></w:r><w:fldSimple w:instr=" SEQ Рисунок \\* ARABIC \\s 1 ">'));
+expectTrue("подпись до первого раздела — без номера раздела", chapterDoc.includes('<w:t xml:space="preserve">Рисунок </w:t></w:r><w:fldSimple w:instr=" SEQ Рисунок \\* ARABIC \\s 1 "><w:r><w:t xml:space="preserve">1<'));
+const chapterStyles = part("word/styles.xml", chapterFiles);
+expectTrue("стиль раздела 13 pt, стиль шага второго уровня 12 pt",
+  /w:styleId="Heading1">.*?<w:outlineLvl w:val="0"\/>.*?<w:sz w:val="26"\/>/.test(chapterStyles) &&
+  /w:styleId="Heading2">.*?<w:outlineLvl w:val="1"\/>.*?<w:sz w:val="24"\/>/.test(chapterStyles));
+expectTrue("без разделов — шаги первого уровня, SEQ без перезапуска, стиля heading 2 нет",
+  !stylesPart.includes("Heading2") && !documentPart.includes("\\s 1") && /w:styleId="Heading1">.*?<w:sz w:val="24"\/>/.test(stylesPart));
+const chapterPath = `${dir}-chapters.docx`;
+writeBytes(chapterPath, buildDocx(chaptered, defaults.styles));
+const chapterText = shell(`textutil -convert txt -stdout '${chapterPath}'`);
+shell(`rm -f '${chapterPath}'`);
+for (const expected of ["1 Вход <в> систему", "Шаги 1.2–1.3", "1.2. Пароль", "Рисунок 1.2 – Шаги 1.2–1.3", "2 Заявка", "Рисунок 2.1 – Шаг 2.1", "Рисунок 1 – Шаг 1"]) {
+  expectTrue(`textutil читает: ${expected}`, chapterText.includes(expected), `\n  текст документа:\n${chapterText}`);
+}
+
 const result = failures.length
   ? `ПРОВАЛ: ${failures.length} из ${checks}\n` + failures.join("\n")
   : `OK: ${checks} проверок пройдено`;

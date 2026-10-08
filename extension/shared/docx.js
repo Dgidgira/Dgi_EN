@@ -4,10 +4,12 @@
 // описание параметров — docs/docx-styles.md.
 //
 // Модель документа (её собирает страница просмотра):
-// { title, meta, sections: [{ heading, items: [{ label, text }], image: { bytes, width, height } | null,
-//   caption: { label, number, name } | null }] }
-// label — номер шага («3.») или null; image.bytes — JPEG;
-// caption — подпись рисунка по ГОСТ 34 / ГОСТ 2.105: «Рисунок 1 – Шаг 1».
+// { title, meta, sections: [{ chapter: { number, title } | undefined, heading, items: [{ label, text }],
+//   image: { bytes, width, height } | null, caption: { label, number, name } | null }] }
+// chapter — у первого блока раздела инструкции (FR-10): перед блоком заголовок первого уровня «1 Название»,
+// а заголовки шагов опускаются на второй уровень; label — номер шага («3.» или «2.3.») или null;
+// image.bytes — JPEG; caption — подпись рисунка по ГОСТ 34 / ГОСТ 2.105: «Рисунок 1 – Шаг 1»,
+// в разделах — «Рисунок 2.3 – Шаг 2.4».
 
 // --- Настройки оформления ---
 
@@ -15,12 +17,14 @@
 // одинарный интервал, абзацный отступ 1,25 см, выравнивание по ширине, левое поле 30 мм
 const DEFAULT_DOCX_STYLES = {
   fonts: { body: "Times New Roman", headings: "Times New Roman" },
-  sizesPt: { title: 13, heading: 12, body: 12, meta: 12, caption: 11, pageNumber: 10 },
+  sizesPt: { title: 13, section: 13, heading: 12, body: 12, meta: 12, caption: 11, pageNumber: 10 },
   colors: { title: "000000", heading: "000000", body: "000000", meta: "000000", stepNumber: "000000" },
   page: { size: "A4", orientation: "portrait", marginsMm: { top: 20, right: 15, bottom: 20, left: 30 } },
   paragraph: { align: "justify", firstLineIndentMm: 12.5 },
   title: { align: "center" },
-  spacing: { afterParagraphPt: 0, beforeHeadingPt: 12, beforeImagePt: 6, afterImagePt: 6, afterCaptionPt: 6, lineSpacing: 1 },
+  spacing: {
+    afterParagraphPt: 0, beforeSectionPt: 18, beforeHeadingPt: 12, beforeImagePt: 6, afterImagePt: 6, afterCaptionPt: 6, lineSpacing: 1,
+  },
   image: { maxWidthPercent: 100, border: true, borderColor: "D1D5DB", captions: true },
   header: { pageNumbers: true },
 };
@@ -42,7 +46,7 @@ const isAlign = (v) => typeof v === "string" && Object.hasOwn(ALIGN_WORD, v);
 const DOCX_STYLE_RULES = {
   fonts: { body: isFont, headings: isFont },
   sizesPt: {
-    title: inRange(6, 72), heading: inRange(6, 72), body: inRange(6, 72), meta: inRange(6, 72),
+    title: inRange(6, 72), section: inRange(6, 72), heading: inRange(6, 72), body: inRange(6, 72), meta: inRange(6, 72),
     caption: inRange(6, 72), pageNumber: inRange(6, 72),
   },
   colors: { title: isColor, heading: isColor, body: isColor, meta: isColor, stepNumber: isColor },
@@ -54,7 +58,7 @@ const DOCX_STYLE_RULES = {
   paragraph: { align: isAlign, firstLineIndentMm: inRange(0, 50) },
   title: { align: isAlign },
   spacing: {
-    afterParagraphPt: inRange(0, 72), beforeHeadingPt: inRange(0, 72), beforeImagePt: inRange(0, 72),
+    afterParagraphPt: inRange(0, 72), beforeSectionPt: inRange(0, 72), beforeHeadingPt: inRange(0, 72), beforeImagePt: inRange(0, 72),
     afterImagePt: inRange(0, 72), afterCaptionPt: inRange(0, 72), lineSpacing: inRange(0.5, 3),
   },
   image: { maxWidthPercent: inRange(10, 100), border: isBoolean, borderColor: isColor, captions: isBoolean },
@@ -159,13 +163,22 @@ function drawing(extent, relId, index, styles) {
 }
 
 // Подпись рисунка: «Рисунок 1 – Шаг 1». Номер — поле SEQ, как у подписей, вставленных в самом Word:
-// по ним работает «Список иллюстраций», а Word пересчитывает номера при правке документа
-function captionContent(caption) {
+// по ним работает «Список иллюстраций», а Word пересчитывает номера при правке документа.
+// В разделах номер «2.3»: номер раздела — текстом, номер рисунка — SEQ с ключом \s 1
+// (счёт заново после каждого заголовка первого уровня, то есть в каждом разделе)
+function captionContent(caption, bySection) {
   const sequence = String(caption.label).replace(/[^\p{L}\p{N}_]/gu, "") || "Figure";
-  return textRun(`${caption.label} `) +
-    `<w:fldSimple w:instr=" SEQ ${sequence} \\* ARABIC ">${textRun(String(caption.number))}</w:fldSimple>` +
+  const number = String(caption.number);
+  const dot = number.lastIndexOf(".");
+  const prefix = dot >= 0 ? number.slice(0, dot + 1) : "";
+  const restart = bySection ? " \\s 1" : "";
+  return textRun(`${caption.label} ${prefix}`) +
+    `<w:fldSimple w:instr=" SEQ ${sequence} \\* ARABIC${restart} ">${textRun(number.slice(dot + 1))}</w:fldSimple>` +
     (caption.name ? textRun(` – ${caption.name}`) : "");
 }
+
+// Есть ли в документе разделы инструкции (FR-10)
+const hasChapters = (doc) => doc.sections.some((section) => section.chapter);
 
 // Верхний колонтитул с номером страницы по центру (как «КИСУСС_колонтитул верхний»)
 function headerXml() {
@@ -182,9 +195,13 @@ function documentXml(doc, styles) {
   // Заголовок и текст шага держатся на одной странице со скриншотом, скриншот — с подписью (keepNext)
   const keepNext = "<w:keepNext/>";
   const numberProps = `<w:b/><w:color w:val="${styles.colors.stepNumber}"/>`;
+  // Разделы — заголовки первого уровня, шаги — второго; без разделов шаги — первого уровня, как раньше
+  const bySection = hasChapters(doc);
+  const stepHeading = bySection ? "Heading2" : "Heading1";
   let imageIndex = 0;
   for (const section of doc.sections) {
-    body.push(paragraph("Heading1", textRun(section.heading)));
+    if (section.chapter) body.push(paragraph("Heading1", textRun(`${section.chapter.number} ${section.chapter.title}`)));
+    body.push(paragraph(stepHeading, textRun(section.heading)));
     for (const item of section.items) {
       const label = item.label ? textRun(item.label + " ", numberProps) : "";
       body.push(paragraph("StepText", label + textRun(item.text), section.image ? keepNext : ""));
@@ -194,7 +211,7 @@ function documentXml(doc, styles) {
       const extent = imageExtent(section.image, styles);
       const caption = styles.image.captions && section.caption;
       body.push(paragraph("StepImage", drawing(extent, `rIdImage${imageIndex}`, imageIndex, styles), caption ? keepNext : ""));
-      if (caption) body.push(paragraph("Caption", captionContent(caption)));
+      if (caption) body.push(paragraph("Caption", captionContent(caption, bySection)));
     }
   }
 
@@ -210,16 +227,21 @@ function documentXml(doc, styles) {
     `<w:body>${body.join("")}${sectPr}</w:body></w:document>`;
 }
 
-// Стили повторяют шаблон: Normal ≈ «КИСУСС_текст основной», Heading1 ≈ «КИСУСС_заголовок 2ур»,
-// Title ≈ «КИСУСС_заголовок без номера», StepImage ≈ «КИСУСС_рисунок положение»,
-// Caption ≈ «КИСУСС_рисунок название», Header ≈ «КИСУСС_колонтитул верхний»
-function stylesXml(styles) {
+// Стили повторяют шаблон: Normal ≈ «КИСУСС_текст основной», Title ≈ «КИСУСС_заголовок без номера»,
+// заголовок раздела ≈ «КИСУСС_заголовок 1ур», заголовок шага ≈ «КИСУСС_заголовок 2ур»,
+// StepImage ≈ «КИСУСС_рисунок положение», Caption ≈ «КИСУСС_рисунок название»,
+// Header ≈ «КИСУСС_колонтитул верхний». С разделами Heading1 — раздел, Heading2 — шаг;
+// без разделов Heading1 — шаг
+function stylesXml(styles, bySection = false) {
   const { fonts, sizesPt, colors, spacing, paragraph: para } = styles;
   const fontsXml = (font) => `<w:rFonts w:ascii="${escapeXml(font)}" w:hAnsi="${escapeXml(font)}" w:cs="${escapeXml(font)}" w:eastAsia="${escapeXml(font)}"/>`;
   const size = (pt) => `<w:sz w:val="${ptToHalfPoints(pt)}"/><w:szCs w:val="${ptToHalfPoints(pt)}"/>`;
   const line = Math.round(spacing.lineSpacing * 240);
   const noIndent = '<w:ind w:firstLine="0"/>';
   const centered = `${noIndent}<w:jc w:val="center"/>`;
+  const stepHeadingStyle = (id, name, level) => style(id, name,
+    `<w:keepNext/><w:spacing w:before="${ptToTwips(spacing.beforeHeadingPt)}" w:after="${ptToTwips(spacing.afterParagraphPt)}"/><w:outlineLvl w:val="${level}"/>`,
+    `${fontsXml(fonts.headings)}<w:b/><w:color w:val="${colors.heading}"/>${size(sizesPt.heading)}`);
   const style = (id, name, pPr, rPr) =>
     `<w:style w:type="paragraph" w:styleId="${id}"><w:name w:val="${name}"/><w:basedOn w:val="Normal"/><w:qFormat/>` +
     `<w:pPr>${pPr}</w:pPr><w:rPr>${rPr}</w:rPr></w:style>`;
@@ -236,9 +258,12 @@ function stylesXml(styles) {
       `${fontsXml(fonts.headings)}<w:b/><w:color w:val="${colors.title}"/>${size(sizesPt.title)}`) +
     style("DocMeta", "Document Meta", `<w:spacing w:after="${ptToTwips(12)}"/>${noIndent}<w:jc w:val="${ALIGN_WORD[styles.title.align]}"/>`,
       `<w:color w:val="${colors.meta}"/>${size(sizesPt.meta)}`) +
-    style("Heading1", "heading 1",
-      `<w:keepNext/><w:spacing w:before="${ptToTwips(spacing.beforeHeadingPt)}" w:after="${ptToTwips(spacing.afterParagraphPt)}"/><w:outlineLvl w:val="0"/>`,
-      `${fontsXml(fonts.headings)}<w:b/><w:color w:val="${colors.heading}"/>${size(sizesPt.heading)}`) +
+    (bySection
+      ? style("Heading1", "heading 1",
+        `<w:keepNext/><w:spacing w:before="${ptToTwips(spacing.beforeSectionPt)}" w:after="${ptToTwips(spacing.afterParagraphPt)}"/><w:outlineLvl w:val="0"/>`,
+        `${fontsXml(fonts.headings)}<w:b/><w:color w:val="${colors.heading}"/>${size(sizesPt.section)}`) +
+        stepHeadingStyle("Heading2", "heading 2", 1)
+      : stepHeadingStyle("Heading1", "heading 1", 0)) +
     style("StepText", "Step Text", "", "") +
     style("StepImage", "Step Image",
       `<w:spacing w:before="${ptToTwips(spacing.beforeImagePt)}" w:after="${ptToTwips(spacing.afterImagePt)}"/>${centered}`, "<w:noProof/>") +
@@ -290,7 +315,7 @@ function docxFiles(doc, styles, date = new Date()) {
     { name: "_rels/.rels", data: rootRels },
     { name: "docProps/core.xml", data: coreXml(doc, date) },
     { name: "word/document.xml", data: documentXml(doc, styles) },
-    { name: "word/styles.xml", data: stylesXml(styles) },
+    { name: "word/styles.xml", data: stylesXml(styles, hasChapters(doc)) },
     ...(header ? [{ name: "word/header1.xml", data: headerXml() }] : []),
     { name: "word/_rels/document.xml.rels", data: documentRels },
     ...images.map((image, i) => ({ name: `word/media/image${i + 1}.jpeg`, data: image.bytes })),

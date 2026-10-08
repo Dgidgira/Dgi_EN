@@ -4,8 +4,9 @@
 // Шрифты, цвета и поля страницы — из тех же настроек, что и Word (config/docx-styles.json).
 //
 // Модель документа та же, что у shared/docx.js, но у картинки вместо байтов dataUrl:
-// { title, meta, sections: [{ heading, items: [{ label, text }], image: { dataUrl, width, height } | null,
-//   caption: { label, number, name } | null }] }
+// { title, meta, sections: [{ chapter: { number, title } | undefined, heading, items: [{ label, text }],
+//   image: { dataUrl, width, height } | null, caption: { label, number, name } | null }] }
+// С разделами (FR-10) раздел — h2, шаг — h3; без разделов шаг — h2.
 
 function escapeHtml(text) {
   return String(text)
@@ -20,8 +21,9 @@ function cssFont(name) {
   return `"${String(name).replace(/["\\]/g, "")}", "Liberation Serif", serif`;
 }
 
-function htmlSection(section, styles) {
-  const parts = [`<h2>${escapeHtml(section.heading)}</h2>`];
+function htmlSection(section, styles, bySection) {
+  const level = bySection ? 3 : 2;
+  const parts = [`<h${level} class="step-heading">${escapeHtml(section.heading)}</h${level}>`];
   if (section.items.length === 1 && !section.items[0].label) {
     parts.push(`<p class="step-text">${escapeHtml(section.items[0].text)}</p>`);
   } else {
@@ -37,11 +39,15 @@ function htmlSection(section, styles) {
     parts.push(`<figure><img src="${section.image.dataUrl}" width="${section.image.width}" height="${section.image.height}" ` +
       `alt="${escapeHtml(section.heading)}">${caption}</figure>`);
   }
-  return `<section class="step">${parts.join("")}</section>`;
+  const chapter = section.chapter
+    ? `<h2 class="chapter">${escapeHtml(`${section.chapter.number} ${section.chapter.title}`)}</h2>\n`
+    : "";
+  return `${chapter}<section class="step">${parts.join("")}</section>`;
 }
 
 function buildHtml(doc, styles) {
   const { fonts, sizesPt, colors, page, paragraph, title, spacing, image, header } = styles;
+  const bySection = doc.sections.some((section) => section.chapter);
   const m = page.marginsMm;
   const textAlign = paragraph.align;
   // Номер страницы в верхнем поле при печати; без поддержки @top-center браузер его просто не выведет
@@ -53,7 +59,8 @@ function buildHtml(doc, styles) {
     body { max-width: 900px; margin: 32px auto; padding: 0 16px; font: ${sizesPt.body}pt/${spacing.lineSpacing} ${cssFont(fonts.body)}; color: #${colors.body}; background: #fff; }
     h1 { margin: 0 0 6pt; font: bold ${sizesPt.title}pt/${spacing.lineSpacing} ${cssFont(fonts.headings)}; color: #${colors.title}; text-align: ${title.align}; }
     .meta { margin: 0 0 12pt; font-size: ${sizesPt.meta}pt; color: #${colors.meta}; text-align: ${title.align}; }
-    h2 { margin: ${spacing.beforeHeadingPt}pt 0 ${spacing.afterParagraphPt}pt; font: bold ${sizesPt.heading}pt/${spacing.lineSpacing} ${cssFont(fonts.headings)}; color: #${colors.heading}; text-indent: ${paragraph.firstLineIndentMm}mm; text-align: ${textAlign}; break-after: avoid; }
+    .chapter { margin: ${spacing.beforeSectionPt}pt 0 ${spacing.afterParagraphPt}pt; font: bold ${sizesPt.section}pt/${spacing.lineSpacing} ${cssFont(fonts.headings)}; color: #${colors.heading}; text-indent: ${paragraph.firstLineIndentMm}mm; text-align: ${textAlign}; break-after: avoid; }
+    .step-heading { margin: ${spacing.beforeHeadingPt}pt 0 ${spacing.afterParagraphPt}pt; font: bold ${sizesPt.heading}pt/${spacing.lineSpacing} ${cssFont(fonts.headings)}; color: #${colors.heading}; text-indent: ${paragraph.firstLineIndentMm}mm; text-align: ${textAlign}; break-after: avoid; }
     .step-text, .items li { margin: 0 0 ${spacing.afterParagraphPt}pt; text-indent: ${paragraph.firstLineIndentMm}mm; text-align: ${textAlign}; }
     .items { margin: 0; padding: 0; list-style: none; }
     .num { font-weight: bold; color: #${colors.stepNumber}; }
@@ -68,6 +75,6 @@ function buildHtml(doc, styles) {
     `<title>${escapeHtml(doc.title)}</title>\n<style>${css}</style>\n</head>\n<body>\n` +
     `<h1>${escapeHtml(doc.title)}</h1>\n` +
     (doc.meta ? `<p class="meta">${escapeHtml(doc.meta)}</p>\n` : "") +
-    doc.sections.map((section) => htmlSection(section, styles)).join("\n") +
+    doc.sections.map((section) => htmlSection(section, styles, bySection)).join("\n") +
     "\n</body>\n</html>\n";
 }

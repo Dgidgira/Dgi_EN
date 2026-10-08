@@ -91,7 +91,7 @@ function burnBlur(ctx, source, rect, scale) {
   ctx.restore();
 }
 
-// Рамка шага и номер в кружке — как на странице просмотра
+// Рамка шага и номер в метке — как на странице просмотра: круг для «3», «таблетка» для «2.13»
 function drawFrame(ctx, rect, number, viewport, scale) {
   const pad = HIGHLIGHT_PADDING * scale;
   const x = rect.x * scale - pad;
@@ -108,19 +108,21 @@ function drawFrame(ctx, rect, number, viewport, scale) {
   if (number !== null) {
     const radius = 10 * scale;
     const gap = 4 * scale;
+    ctx.font = `600 ${Math.round(12 * scale)}px system-ui, sans-serif`;
+    // Половина ширины метки: не меньше радиуса, с полями 4 px по бокам текста
+    const half = Math.max(radius, ctx.measureText(String(number)).width / 2 + 4 * scale);
     const side = badgeSide(rect, viewport);
     const center = {
-      "side-right": { cx: x + width + gap + radius, cy: y + height / 2 },
-      "side-left": { cx: x - gap - radius, cy: y + height / 2 },
-      "side-top": { cx: x + radius, cy: y - gap - radius },
-      "side-inside": { cx: x + width - radius - 2 * scale, cy: y + radius + 2 * scale },
+      "side-right": { cx: x + width + gap + half, cy: y + height / 2 },
+      "side-left": { cx: x - gap - half, cy: y + height / 2 },
+      "side-top": { cx: x + half, cy: y - gap - radius },
+      "side-inside": { cx: x + width - half - 2 * scale, cy: y + radius + 2 * scale },
     }[side];
     ctx.fillStyle = FRAME_COLOR;
     ctx.beginPath();
-    ctx.arc(center.cx, center.cy, radius, 0, Math.PI * 2);
+    ctx.roundRect(center.cx - half, center.cy - radius, 2 * half, 2 * radius, radius);
     ctx.fill();
     ctx.fillStyle = "#fff";
-    ctx.font = `600 ${Math.round(12 * scale)}px system-ui, sans-serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(String(number), center.cx, center.cy + scale);
@@ -202,24 +204,32 @@ async function renderExportImage(group, dataUrl) {
 
 async function buildExportDoc(onProgress) {
   const sections = [];
-  let figureNumber = 0;
-  for (const [index, group] of current.groups.entries()) {
-    onProgress(index + 1, current.groups.length);
-    const multi = group.items.length > 1;
-    const numbers = group.items.map((item) => item.number);
-    const heading = multi
-      ? t("viewerGroupNumbers", [String(numbers[0]), String(numbers[numbers.length - 1])])
-      : t("viewerStepNumber", [String(numbers[0])]);
-    // Значения скрытых полей в тексте — «***»
-    const items = group.items.map(({ step, number }) => ({
-      label: multi ? `${number}.` : null,
-      text: describeStep(maskStep(step, masks)).text,
-    }));
-    const dataUrl = current.shotOf(group.shotStep);
-    const image = dataUrl ? await renderExportImage(group, dataUrl) : null;
-    // Подпись рисунка «Рисунок N – Шаг K»: рисунки нумеруются подряд, шаги без скриншота пропускаются
-    const caption = image ? { label: t("exportFigureLabel"), number: ++figureNumber, name: heading } : null;
-    sections.push({ heading, items, image, caption });
+  let done = 0;
+  // Разделы инструкции (FR-10): пустые в документ не попадают; рисунки нумеруются внутри раздела
+  for (const part of current.parts.filter((p) => p.groups.length)) {
+    let figureNumber = 0;
+    for (const [index, group] of part.groups.entries()) {
+      onProgress(++done, current.groups.length);
+      const multi = group.items.length > 1;
+      const numbers = group.items.map((item) => item.number);
+      const heading = multi
+        ? t("viewerGroupNumbers", [String(numbers[0]), String(numbers[numbers.length - 1])])
+        : t("viewerStepNumber", [String(numbers[0])]);
+      // Значения скрытых полей в тексте — «***»
+      const items = group.items.map(({ step, number }) => ({
+        label: multi ? `${number}.` : null,
+        text: describeStep(maskStep(step, masks)).text,
+      }));
+      const dataUrl = current.shotOf(group.shotStep);
+      const image = dataUrl ? await renderExportImage(group, dataUrl) : null;
+      // Подпись «Рисунок N – Шаг K» («Рисунок 2.3 – Шаг 2.4» в разделе); шаги без скриншота пропускаются
+      const figure = image ? ++figureNumber : null;
+      const caption = image
+        ? { label: t("exportFigureLabel"), number: part.section ? `${part.section.number}.${figure}` : figure, name: heading }
+        : null;
+      const chapter = part.section && index === 0 ? { number: part.section.number, title: part.section.title } : undefined;
+      sections.push({ chapter, heading, items, image, caption });
+    }
   }
   const title = docTitleEl.value.trim() || defaultTitle();
   const meta = t("exportMeta", [new Date().toLocaleDateString("ru-RU")]);

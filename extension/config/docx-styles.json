@@ -5,6 +5,7 @@
   },
   "sizesPt": {
     "title": 13,
+    "section": 13,
     "heading": 12,
     "body": 12,
     "meta": 12,
@@ -37,6 +38,7 @@
   },
   "spacing": {
     "afterParagraphPt": 0,
+    "beforeSectionPt": 18,
     "beforeHeadingPt": 12,
     "beforeImagePt": 6,
     "afterImagePt": 6,
