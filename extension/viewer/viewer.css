@@ -597,3 +597,50 @@ h1 {
   font-size: 13px;
   color: var(--muted);
 }
+
+/* Разделы инструкции (FR-10) */
+.section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin: 32px 0 16px;
+  padding: 0 0 8px;
+  border-bottom: 2px solid var(--text);
+}
+
+.section-number {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.section-title {
+  flex: 1 1 240px;
+  min-width: 0;
+  padding: 4px 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  background: none;
+}
+
+.section-title:hover {
+  border-color: var(--border);
+}
+
+.section-title:focus-visible {
+  border-color: #d1d5db;
+  outline: 3px solid #93c5fd;
+  outline-offset: 1px;
+  background: var(--card);
+}
+
+.section-empty {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}

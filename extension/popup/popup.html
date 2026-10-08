@@ -8,7 +8,16 @@
   <p id="status" class="status"></p>
   <button id="toggle" type="button"></button>
   <p id="step-count" class="step-count"></p>
+  <form id="section-form" class="section-form" hidden>
+    <label class="section-field">
+      <span id="section-label"></span>
+      <input id="section-title" type="text" maxlength="200" autocomplete="off" required>
+    </label>
+    <button id="section-add" type="submit" class="secondary"></button>
+    <p id="section-current" class="section-current"></p>
+  </form>
   <button id="open-viewer" type="button" class="secondary"></button>
+  <script src="../shared/sections.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

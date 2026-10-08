@@ -3,7 +3,8 @@
 // шаблонное описание (FR-3, shared/describe.js). Отмеченные автором поля размываются на всех
 // скриншотах и скрываются в описаниях; произвольные области размываются на своём скриншоте
 // (FR-6, shared/mask.js). Соседние шаги можно объединить под одним скриншотом (FR-7, shared/groups.js),
-// скриншот можно кадрировать (FR-7, shared/crop.js).
+// скриншот можно кадрировать (FR-7, shared/crop.js). Шаги делятся на разделы, созданные во время записи;
+// название раздела можно исправить, раздел — удалить (FR-10, shared/sections.js).
 
 const t = (key, substitutions) => chrome.i18n.getMessage(key, substitutions);
 
@@ -31,8 +32,11 @@ let maskedAreas = {};
 let joinedSteps = [];
 // Кадры скриншотов (ключ "crops"): { [id шага со скриншотом]: рамка в долях снимка }
 let crops = {};
+// Разделы инструкции (ключ "sections"): [{ id, title, timestamp }]
+let sections = [];
 // Последнее показанное состояние: из него собирается выгружаемый документ (viewer/export.js)
-let current = { groups: [], shotOf: () => null, rawSteps: [] };
+// parts — разделы с группами шагов, groups — все группы подряд
+let current = { parts: [], groups: [], shotOf: () => null, rawSteps: [] };
 let mode = null;
 
 document.title = t("viewerTitle");
@@ -467,6 +471,34 @@ function renderDroppedStep(rawStep, reason, dataUrl) {
   return item;
 }
 
+// Заголовок раздела: номер, название (можно исправить на месте) и удаление.
+// Удалённый раздел исчезает, его шаги переходят в предыдущий раздел
+function renderSectionHead(section) {
+  const head = el("li", "section-head");
+  head.append(el("span", "section-number", section.number === null ? "—" : String(section.number)));
+  const title = el("input", "section-title");
+  title.type = "text";
+  title.maxLength = SECTION_TITLE_MAX;
+  title.value = section.title;
+  title.setAttribute("aria-label", t("viewerSectionTitleLabel"));
+  title.addEventListener("change", async () => {
+    const { sections: stored = [] } = await chrome.storage.local.get("sections");
+    const next = renameSection(stored, section.id, title.value);
+    if (next === stored) title.value = section.title;
+    else await chrome.storage.local.set({ sections: next });
+  });
+  title.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") title.blur();
+  });
+  head.append(title);
+  head.append(smallButton(t("viewerSectionDelete"), async () => {
+    const { sections: stored = [] } = await chrome.storage.local.get("sections");
+    await chrome.storage.local.set({ sections: removeSection(stored, section.id) });
+  }));
+  if (section.number === null) head.append(el("p", "section-empty", t("viewerSectionEmpty")));
+  return head;
+}
+
 // Сводка: SQ-5 — у скольких шагов описание построено с подписью элемента; SQ-2 — сколько отсеяно;
 // FR-7 — сколько скриншотов останется в инструкции после объединения шагов
 function renderStats(steps, dropped, groups) {
@@ -493,12 +525,13 @@ function renderMaskToolbar() {
 }
 
 async function render() {
-  const stored = await chrome.storage.local.get(["steps", "maskedFields", "maskedAreas", "joinedSteps", "crops"]);
+  const stored = await chrome.storage.local.get(["steps", "maskedFields", "maskedAreas", "joinedSteps", "crops", "sections"]);
   const { steps: rawSteps = [], maskedFields = [] } = stored;
   masks = maskedFields;
   maskedAreas = stored.maskedAreas || {};
   joinedSteps = stored.joinedSteps || [];
   crops = stored.crops || {};
+  sections = stored.sections || [];
   renderMaskToolbar();
   const { steps, dropped } = normalizeSteps(rawSteps);
   const shotKeys = rawSteps.map((step) => SHOT_PREFIX + step.id);
@@ -506,10 +539,15 @@ async function render() {
   const shotOf = (step) => shots[SHOT_PREFIX + step.id];
 
   emptyEl.hidden = rawSteps.length > 0;
-  const groups = buildGroups(steps, joinedSteps);
-  current = { groups, shotOf, rawSteps };
+  const parts = buildParts(steps, joinedSteps, sections);
+  const groups = parts.flatMap((part) => part.groups);
+  current = { parts, groups, shotOf, rawSteps };
   renderStats(steps, dropped, groups);
-  stepsEl.replaceChildren(...groups.map((group, i) => renderGroup(group, i === 0, shotOf)));
+  // Первая группа раздела не объединяется с прошлым разделом: у неё нет кнопки «Объединить с предыдущим»
+  stepsEl.replaceChildren(...parts.flatMap((part) => [
+    ...(part.section ? [renderSectionHead(part.section)] : []),
+    ...part.groups.map((group, i) => renderGroup(group, i === 0, shotOf)),
+  ]));
 
   // Раздел сохраняет состояние «раскрыт / свёрнут» при обновлении во время записи
   droppedEl.hidden = dropped.length === 0;
@@ -521,5 +559,5 @@ render();
 
 // Страница обновляется сама, пока идёт запись
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === "local" && ["steps", "maskedFields", "maskedAreas", "joinedSteps", "crops"].some((key) => key in changes)) render();
+  if (areaName === "local" && ["steps", "maskedFields", "maskedAreas", "joinedSteps", "crops", "sections"].some((key) => key in changes)) render();
 });

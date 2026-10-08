@@ -29,6 +29,27 @@
       }
     }
   },
+  "popupSectionLabel": {
+    "message": "Название раздела"
+  },
+  "popupSectionPlaceholder": {
+    "message": "Например: Вход в систему"
+  },
+  "popupSectionAdd": {
+    "message": "Новый раздел"
+  },
+  "popupSectionCurrent": {
+    "message": "Текущий раздел: «$TITLE$»",
+    "placeholders": {
+      "title": {
+        "content": "$1",
+        "example": "Вход в систему"
+      }
+    }
+  },
+  "popupSectionNone": {
+    "message": "Шаги пока без раздела"
+  },
   "popupOpenViewer": {
     "message": "Открыть запись"
   },
@@ -352,6 +373,15 @@
   },
   "viewerJoinPrevious": {
     "message": "Объединить с предыдущим"
+  },
+  "viewerSectionTitleLabel": {
+    "message": "Название раздела"
+  },
+  "viewerSectionDelete": {
+    "message": "Удалить раздел"
+  },
+  "viewerSectionEmpty": {
+    "message": "В разделе нет шагов: в документ он не попадёт"
   },
   "viewerSplit": {
     "message": "Отделить"

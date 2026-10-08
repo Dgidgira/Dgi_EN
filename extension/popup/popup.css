@@ -130,3 +130,44 @@ button.secondary:hover {
   .status.recording::before { animation: none; }
   button { transition: none; }
 }
+
+/* Новый раздел во время записи (FR-10) */
+.section-form {
+  margin: 14px 0 0;
+  padding: 12px 0 0;
+  border-top: 1px solid #e5e7eb;
+}
+
+.section-form[hidden] {
+  display: none;
+}
+
+.section-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.section-field input {
+  padding: 7px 9px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.section-field input:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.section-current {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
