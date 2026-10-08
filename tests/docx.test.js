@@ -214,6 +214,31 @@ for (const expected of ["1 Вход <в> систему", "Шаги 1.2–1.3", 
   expectTrue(`textutil читает: ${expected}`, chapterText.includes(expected), `\n  текст документа:\n${chapterText}`);
 }
 
+// --- Комментарии автора (FR-11): после описания шага и между рисунком и подписью
+const commented = {
+  title: "С комментариями",
+  meta: null,
+  sections: [
+    { heading: "Шаги 1–2", items: [{ label: "1.", text: "Введите логин", comment: "Логин выдаёт администратор\nОн совпадает с почтой" },
+      { label: "2.", text: "Войти", comment: "" }],
+      image: { bytes: jpeg, width: 4, height: 3 }, figureText: "Кнопка «Войти» внизу формы", caption: { label: "Рисунок", number: 1, name: "Шаги 1–2" } },
+  ],
+};
+const commentedDoc = part("word/document.xml", docxFiles(commented, defaults.styles));
+const paragraphOrder = [...commentedDoc.matchAll(/<w:pStyle w:val="([A-Za-z0-9]+)"\/>/g)].map((m) => m[1]);
+expect("порядок: шаг, его комментарий по абзацам, шаг без комментария, рисунок, подрисуночный текст, подпись", paragraphOrder,
+  ["Title", "Heading1", "StepText", "StepComment", "StepComment", "StepText", "StepImage", "FigureText", "Caption"]);
+expectTrue("комментарий и подрисуночный текст держатся с рисунком (keepNext)",
+  /w:val="StepComment"\/><w:keepNext\/>/.test(commentedDoc) && /w:val="FigureText"\/><w:keepNext\/>/.test(commentedDoc));
+expectTrue("стили комментариев есть", stylesPart.includes('w:styleId="StepComment"') && stylesPart.includes('w:styleId="FigureText"'));
+const commentPath = `${dir}-comments.docx`;
+writeBytes(commentPath, buildDocx(commented, defaults.styles));
+const commentText = shell(`textutil -convert txt -stdout '${commentPath}'`);
+shell(`rm -f '${commentPath}'`);
+for (const expected of ["Логин выдаёт администратор", "Он совпадает с почтой", "Кнопка «Войти» внизу формы"]) {
+  expectTrue(`textutil читает: ${expected}`, commentText.includes(expected), `\n  текст документа:\n${commentText}`);
+}
+
 const result = failures.length
   ? `ПРОВАЛ: ${failures.length} из ${checks}\n` + failures.join("\n")
   : `OK: ${checks} проверок пройдено`;

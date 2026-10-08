@@ -4,8 +4,10 @@
 // описание параметров — docs/docx-styles.md.
 //
 // Модель документа (её собирает страница просмотра):
-// { title, meta, sections: [{ chapter: { number, title } | undefined, heading, items: [{ label, text }],
-//   image: { bytes, width, height } | null, caption: { label, number, name } | null }] }
+// { title, meta, sections: [{ chapter: { number, title } | undefined, heading, items: [{ label, text, comment }],
+//   image: { bytes, width, height } | null, figureText, caption: { label, number, name } | null }] }
+// comment — комментарий автора к шагу, абзацы через перевод строки (FR-11); figureText — подрисуночный
+// текст между рисунком и подписью (ГОСТ 2.105), тоже абзацы через перевод строки;
 // chapter — у первого блока раздела инструкции (FR-10): перед блоком заголовок первого уровня «1 Название»,
 // а заголовки шагов опускаются на второй уровень; label — номер шага («3.» или «2.3.») или null;
 // image.bytes — JPEG; caption — подпись рисунка по ГОСТ 34 / ГОСТ 2.105: «Рисунок 1 – Шаг 1»,
@@ -177,6 +179,9 @@ function captionContent(caption, bySection) {
     (caption.name ? textRun(` – ${caption.name}`) : "");
 }
 
+// Абзацы комментария: строки без пустых
+const commentLines = (text) => (text ? String(text).split(/\n+/).map((line) => line.trim()).filter(Boolean) : []);
+
 // Есть ли в документе разделы инструкции (FR-10)
 const hasChapters = (doc) => doc.sections.some((section) => section.chapter);
 
@@ -202,15 +207,21 @@ function documentXml(doc, styles) {
   for (const section of doc.sections) {
     if (section.chapter) body.push(paragraph("Heading1", textRun(`${section.chapter.number} ${section.chapter.title}`)));
     body.push(paragraph(stepHeading, textRun(section.heading)));
+    const withImage = section.image ? keepNext : "";
     for (const item of section.items) {
       const label = item.label ? textRun(item.label + " ", numberProps) : "";
-      body.push(paragraph("StepText", label + textRun(item.text), section.image ? keepNext : ""));
+      body.push(paragraph("StepText", label + textRun(item.text), withImage));
+      for (const line of commentLines(item.comment)) body.push(paragraph("StepComment", textRun(line), withImage));
     }
     if (section.image) {
       imageIndex += 1;
       const extent = imageExtent(section.image, styles);
       const caption = styles.image.captions && section.caption;
-      body.push(paragraph("StepImage", drawing(extent, `rIdImage${imageIndex}`, imageIndex, styles), caption ? keepNext : ""));
+      const figureText = commentLines(section.figureText);
+      body.push(paragraph("StepImage", drawing(extent, `rIdImage${imageIndex}`, imageIndex, styles),
+        caption || figureText.length ? keepNext : ""));
+      figureText.forEach((line, i) =>
+        body.push(paragraph("FigureText", textRun(line), caption || i < figureText.length - 1 ? keepNext : "")));
       if (caption) body.push(paragraph("Caption", captionContent(caption, bySection)));
     }
   }
@@ -230,7 +241,8 @@ function documentXml(doc, styles) {
 // Стили повторяют шаблон: Normal ≈ «КИСУСС_текст основной», Title ≈ «КИСУСС_заголовок без номера»,
 // заголовок раздела ≈ «КИСУСС_заголовок 1ур», заголовок шага ≈ «КИСУСС_заголовок 2ур»,
 // StepImage ≈ «КИСУСС_рисунок положение», Caption ≈ «КИСУСС_рисунок название»,
-// Header ≈ «КИСУСС_колонтитул верхний». С разделами Heading1 — раздел, Heading2 — шаг;
+// Header ≈ «КИСУСС_колонтитул верхний». StepComment — комментарий к шагу (как основной текст),
+// FigureText — подрисуночный текст (как подпись рисунка). С разделами Heading1 — раздел, Heading2 — шаг;
 // без разделов Heading1 — шаг
 function stylesXml(styles, bySection = false) {
   const { fonts, sizesPt, colors, spacing, paragraph: para } = styles;
@@ -265,8 +277,10 @@ function stylesXml(styles, bySection = false) {
         stepHeadingStyle("Heading2", "heading 2", 1)
       : stepHeadingStyle("Heading1", "heading 1", 0)) +
     style("StepText", "Step Text", "", "") +
+    style("StepComment", "Step Comment", "", "") +
     style("StepImage", "Step Image",
       `<w:spacing w:before="${ptToTwips(spacing.beforeImagePt)}" w:after="${ptToTwips(spacing.afterImagePt)}"/>${centered}`, "<w:noProof/>") +
+    style("FigureText", "Figure Text", `<w:spacing w:after="0"/>${centered}`, size(sizesPt.caption)) +
     style("Caption", "caption", `<w:spacing w:after="${ptToTwips(spacing.afterCaptionPt)}"/>${centered}`, size(sizesPt.caption)) +
     style("Header", "header", `<w:spacing w:after="0"/>${centered}`, size(sizesPt.pageNumber)) +
     `</w:styles>`;

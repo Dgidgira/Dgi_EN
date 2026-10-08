@@ -5,7 +5,8 @@
 //
 // Модель документа та же, что у shared/docx.js, но у картинки вместо байтов dataUrl:
 // { title, meta, sections: [{ chapter: { number, title } | undefined, heading, items: [{ label, text }],
-//   image: { dataUrl, width, height } | null, caption: { label, number, name } | null }] }
+//   image: { dataUrl, width, height } | null, figureText, caption: { label, number, name } | null }] }
+// items[].comment — комментарий к шагу, figureText — подрисуночный текст (FR-11), абзацы через перевод строки.
 // С разделами (FR-10) раздел — h2, шаг — h3; без разделов шаг — h2.
 
 function escapeHtml(text) {
@@ -21,14 +22,21 @@ function cssFont(name) {
   return `"${String(name).replace(/["\\]/g, "")}", "Liberation Serif", serif`;
 }
 
+// Абзацы комментария
+function htmlParagraphs(text, className) {
+  return (text ? String(text).split(/\n+/).map((line) => line.trim()).filter(Boolean) : [])
+    .map((line) => `<p class="${className}">${escapeHtml(line)}</p>`).join("");
+}
+
 function htmlSection(section, styles, bySection) {
   const level = bySection ? 3 : 2;
   const parts = [`<h${level} class="step-heading">${escapeHtml(section.heading)}</h${level}>`];
   if (section.items.length === 1 && !section.items[0].label) {
-    parts.push(`<p class="step-text">${escapeHtml(section.items[0].text)}</p>`);
+    parts.push(`<p class="step-text">${escapeHtml(section.items[0].text)}</p>` + htmlParagraphs(section.items[0].comment, "step-comment"));
   } else {
     parts.push('<ol class="items">' + section.items.map((item) =>
-      `<li><span class="num">${escapeHtml(item.label || "")}</span> ${escapeHtml(item.text)}</li>`).join("") + "</ol>");
+      `<li><span class="num">${escapeHtml(item.label || "")}</span> ${escapeHtml(item.text)}` +
+      `${htmlParagraphs(item.comment, "step-comment")}</li>`).join("") + "</ol>");
   }
   if (section.image) {
     // Подпись рисунка по ГОСТ 34 / ГОСТ 2.105: «Рисунок 1 – Шаг 1», по центру под рисунком
@@ -37,7 +45,7 @@ function htmlSection(section, styles, bySection) {
         (section.caption.name ? ` – ${section.caption.name}` : ""))}</figcaption>`
       : "";
     parts.push(`<figure><img src="${section.image.dataUrl}" width="${section.image.width}" height="${section.image.height}" ` +
-      `alt="${escapeHtml(section.heading)}">${caption}</figure>`);
+      `alt="${escapeHtml(section.heading)}">${htmlParagraphs(section.figureText, "figure-text")}${caption}</figure>`);
   }
   const chapter = section.chapter
     ? `<h2 class="chapter">${escapeHtml(`${section.chapter.number} ${section.chapter.title}`)}</h2>\n`
@@ -66,6 +74,9 @@ function buildHtml(doc, styles) {
     .num { font-weight: bold; color: #${colors.stepNumber}; }
     figure { margin: ${spacing.beforeImagePt}pt 0 ${spacing.afterImagePt}pt; text-align: center; break-inside: avoid; }
     img { max-width: ${image.maxWidthPercent}%; height: auto; ${image.border ? `border: 1px solid #${image.borderColor};` : ""} }
+    .step-comment { margin: 0 0 ${spacing.afterParagraphPt}pt; text-indent: ${paragraph.firstLineIndentMm}mm; text-align: ${textAlign}; }
+    .figure-text { margin: ${spacing.afterImagePt}pt 0 0; font-size: ${sizesPt.caption}pt; }
+    .figure-text + .figure-text, .figure-text + figcaption { margin-top: 0; }
     figcaption { margin: ${spacing.afterImagePt}pt 0 ${spacing.afterCaptionPt}pt; font-size: ${sizesPt.caption}pt; }
     @media print { body { max-width: none; margin: 0; padding: 0; } }
   `.replace(/\n\s+/g, "\n");

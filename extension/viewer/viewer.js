@@ -4,7 +4,8 @@
 // скриншотах и скрываются в описаниях; произвольные области размываются на своём скриншоте
 // (FR-6, shared/mask.js). Соседние шаги можно объединить под одним скриншотом (FR-7, shared/groups.js),
 // скриншот можно кадрировать (FR-7, shared/crop.js). Шаги делятся на разделы, созданные во время записи;
-// название раздела можно исправить, раздел — удалить (FR-10, shared/sections.js).
+// название раздела можно исправить, раздел — удалить или начать с любого шага (FR-10, shared/sections.js).
+// К шагам и скриншотам можно написать комментарий для читателя (FR-11, shared/comments.js).
 
 const t = (key, substitutions) => chrome.i18n.getMessage(key, substitutions);
 
@@ -34,6 +35,10 @@ let joinedSteps = [];
 let crops = {};
 // Разделы инструкции (ключ "sections"): [{ id, title, timestamp }]
 let sections = [];
+// Комментарии к шагам и скриншотам (ключ "comments"): { steps: {}, shots: {} }
+let comments = { steps: {}, shots: {} };
+// Раздел, созданный на этой странице: после перерисовки курсор ставится в его название
+let focusSectionId = null;
 // Последнее показанное состояние: из него собирается выгружаемый документ (viewer/export.js)
 // parts — разделы с группами шагов, groups — все группы подряд
 let current = { parts: [], groups: [], shotOf: () => null, rawSteps: [] };
@@ -407,24 +412,70 @@ function groupLayers(group) {
   return { multi, frames, areas, crop: crops[group.shotStep.id] || null };
 }
 
-// Карточка группы шагов: один шаг или несколько шагов под общим скриншотом последнего шага
-function renderGroup(group, isFirstGroup, shotOf) {
+// Новый раздел с этого шага (FR-10): название по умолчанию, курсор сразу в названии
+async function startSectionAt(step) {
+  const section = createSection(t("viewerSectionDefaultTitle"), step.timestamp, crypto.randomUUID());
+  const { sections: stored = [] } = await chrome.storage.local.get("sections");
+  focusSectionId = section.id;
+  await chrome.storage.local.set({ sections: [...stored, section] });
+}
+
+// Комментарий для читателя (FR-11): кнопка «Добавить комментарий», по ней — поле ввода.
+// Сохраняется при уходе из поля; пустой комментарий удаляется
+function commentEditor(text, addKey, placeholderKey, onSave) {
+  const box = el("div", "comment");
+  const area = el("textarea", "comment-text");
+  area.value = text;
+  area.rows = 2;
+  area.maxLength = COMMENT_MAX;
+  area.placeholder = t(placeholderKey);
+  area.hidden = !text;
+  const add = smallButton(t(addKey), () => {
+    add.hidden = true;
+    area.hidden = false;
+    area.focus();
+  });
+  add.hidden = Boolean(text);
+  area.addEventListener("change", () => onSave(area.value));
+  area.addEventListener("blur", () => {
+    if (area.value.trim()) return;
+    area.hidden = true;
+    add.hidden = false;
+  });
+  box.append(add, area);
+  return box;
+}
+
+async function saveComment(update) {
+  const { comments: stored } = await chrome.storage.local.get("comments");
+  await chrome.storage.local.set({ comments: update(stored) });
+}
+
+function stepCommentEditor(step) {
+  return commentEditor(stepComment(comments, step.id), "viewerCommentAdd", "viewerCommentPlaceholder",
+    (text) => saveComment((stored) => setComment(stored, "steps", step.id, text)));
+}
+
+// Карточка группы шагов: один шаг или несколько шагов под общим скриншотом последнего шага.
+// isFirstGroup — первая группа раздела: не объединяется с предыдущей; canStartSection — с первого
+// шага группы ещё не начинается раздел
+function renderGroup(group, isFirstGroup, shotOf, canStartSection) {
   const { multi, frames, areas, crop } = groupLayers(group);
   const card = el("li", multi ? "step group" : "step");
   // Значения отмеченных полей не показываем нигде, включая технические подробности
   const shown = group.items.map(({ step, number }) => ({ raw: step, step: maskStep(step, masks), number }));
 
-  if (!isFirstGroup) {
-    const join = smallButton(t("viewerJoinPrevious"), () => saveJoined(group.items[0].step.id));
-    join.classList.add("join-button");
-    card.append(join);
-  }
+  const actions = el("div", "card-actions");
+  if (canStartSection) actions.append(smallButton(t("viewerSectionStartHere"), () => startSectionAt(group.items[0].step)));
+  if (!isFirstGroup) actions.append(smallButton(t("viewerJoinPrevious"), () => saveJoined(group.items[0].step.id)));
+  if (actions.childElementCount) card.append(actions);
 
   if (!multi) {
     const head = el("p", "step-head");
     head.append(el("span", "step-number", t("viewerStepNumber", [String(shown[0].number)])));
     head.append(el("span", "step-text", describeStep(shown[0].step).text));
     card.append(head);
+    card.append(stepCommentEditor(shown[0].raw));
   } else {
     const first = shown[0].number;
     const last = shown[shown.length - 1].number;
@@ -438,6 +489,7 @@ function renderGroup(group, isFirstGroup, shotOf) {
       if (!rect) item.append(el("span", "not-on-shot", t("viewerNotOnShot")));
       else if (!rectInCrop(rect, group.shotStep.viewport, crop)) item.append(el("span", "not-on-shot", t("viewerFrameOutsideCrop")));
       if (index > 0) item.append(smallButton(t("viewerSplit"), () => saveJoined(raw.id)));
+      item.append(stepCommentEditor(raw));
       list.append(item);
     });
     card.append(list);
@@ -453,6 +505,9 @@ function renderGroup(group, isFirstGroup, shotOf) {
       () => openCropEditor(group.shotStep, dataUrl, frames, areas));
     cropButton.classList.add("crop-open");
     card.append(cropButton);
+    // Подрисуночный текст: в документе между скриншотом и подписью «Рисунок N»
+    card.append(commentEditor(groupShotComment(comments, group), "viewerShotCommentAdd", "viewerShotCommentPlaceholder",
+      (text) => saveComment((stored) => setGroupShotComment(stored, group, text))));
   }
   card.append(renderDebug(shown.map(({ step }) => step)));
   return card;
@@ -481,6 +536,7 @@ function renderSectionHead(section) {
   title.maxLength = SECTION_TITLE_MAX;
   title.value = section.title;
   title.setAttribute("aria-label", t("viewerSectionTitleLabel"));
+  title.dataset.sectionId = section.id;
   title.addEventListener("change", async () => {
     const { sections: stored = [] } = await chrome.storage.local.get("sections");
     const next = renameSection(stored, section.id, title.value);
@@ -525,13 +581,14 @@ function renderMaskToolbar() {
 }
 
 async function render() {
-  const stored = await chrome.storage.local.get(["steps", "maskedFields", "maskedAreas", "joinedSteps", "crops", "sections"]);
+  const stored = await chrome.storage.local.get(["steps", "maskedFields", "maskedAreas", "joinedSteps", "crops", "sections", "comments"]);
   const { steps: rawSteps = [], maskedFields = [] } = stored;
   masks = maskedFields;
   maskedAreas = stored.maskedAreas || {};
   joinedSteps = stored.joinedSteps || [];
   crops = stored.crops || {};
   sections = stored.sections || [];
+  comments = stored.comments || { steps: {}, shots: {} };
   renderMaskToolbar();
   const { steps, dropped } = normalizeSteps(rawSteps);
   const shotKeys = rawSteps.map((step) => SHOT_PREFIX + step.id);
@@ -546,8 +603,14 @@ async function render() {
   // Первая группа раздела не объединяется с прошлым разделом: у неё нет кнопки «Объединить с предыдущим»
   stepsEl.replaceChildren(...parts.flatMap((part) => [
     ...(part.section ? [renderSectionHead(part.section)] : []),
-    ...part.groups.map((group, i) => renderGroup(group, i === 0, shotOf)),
+    ...part.groups.map((group, i) => renderGroup(group, i === 0, shotOf, !(part.section && i === 0))),
   ]));
+  if (focusSectionId) {
+    const input = stepsEl.querySelector(`input[data-section-id="${CSS.escape(focusSectionId)}"]`);
+    focusSectionId = null;
+    input?.focus();
+    input?.select();
+  }
 
   // Раздел сохраняет состояние «раскрыт / свёрнут» при обновлении во время записи
   droppedEl.hidden = dropped.length === 0;
@@ -557,7 +620,28 @@ async function render() {
 
 render();
 
+// Пока автор пишет комментарий или название раздела, страницу не перерисовываем, чтобы не потерять
+// набранный текст (например, во время записи приходят новые шаги); перерисуем, когда он уйдёт из поля
+let renderPending = false;
+
+function isEditing() {
+  const active = document.activeElement;
+  return stepsEl.contains(active) && ["INPUT", "TEXTAREA"].includes(active.tagName);
+}
+
+stepsEl.addEventListener("focusout", () => {
+  setTimeout(() => {
+    if (renderPending && !isEditing()) {
+      renderPending = false;
+      render();
+    }
+  });
+});
+
 // Страница обновляется сама, пока идёт запись
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === "local" && ["steps", "maskedFields", "maskedAreas", "joinedSteps", "crops", "sections"].some((key) => key in changes)) render();
+  const keys = ["steps", "maskedFields", "maskedAreas", "joinedSteps", "crops", "sections", "comments"];
+  if (areaName !== "local" || !keys.some((key) => key in changes)) return;
+  if (isEditing()) renderPending = true;
+  else render();
 });

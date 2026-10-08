@@ -215,10 +215,11 @@ async function buildExportDoc(onProgress) {
       const heading = multi
         ? t("viewerGroupNumbers", [String(numbers[0]), String(numbers[numbers.length - 1])])
         : t("viewerStepNumber", [String(numbers[0])]);
-      // Значения скрытых полей в тексте — «***»
+      // Значения скрытых полей в тексте — «***»; комментарий автора к шагу — после описания (FR-11)
       const items = group.items.map(({ step, number }) => ({
         label: multi ? `${number}.` : null,
         text: describeStep(maskStep(step, masks)).text,
+        comment: stepComment(comments, step.id),
       }));
       const dataUrl = current.shotOf(group.shotStep);
       const image = dataUrl ? await renderExportImage(group, dataUrl) : null;
@@ -228,7 +229,9 @@ async function buildExportDoc(onProgress) {
         ? { label: t("exportFigureLabel"), number: part.section ? `${part.section.number}.${figure}` : figure, name: heading }
         : null;
       const chapter = part.section && index === 0 ? { number: part.section.number, title: part.section.title } : undefined;
-      sections.push({ chapter, heading, items, image, caption });
+      // Подрисуночный текст — комментарий автора к скриншоту (FR-11)
+      const figureText = image ? groupShotComment(comments, group) : "";
+      sections.push({ chapter, heading, items, image, figureText, caption });
     }
   }
   const title = docTitleEl.value.trim() || defaultTitle();

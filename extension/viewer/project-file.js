@@ -5,7 +5,7 @@
 // Открытый проект заменяет текущую запись в chrome.storage.local; страница перерисовывается сама
 // по storage.onChanged (viewer.js), как во время записи.
 
-const PROJECT_STATE_KEYS = ["steps", "maskedFields", "maskedAreas", "joinedSteps", "crops", "sections", "docTitle"];
+const PROJECT_STATE_KEYS = ["steps", "maskedFields", "maskedAreas", "joinedSteps", "crops", "sections", "comments", "docTitle"];
 
 const projectSaveEl = document.getElementById("project-save");
 const projectOpenEl = document.getElementById("project-open");

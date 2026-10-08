@@ -285,10 +285,14 @@ h1 {
   outline: none;
 }
 
-/* Отдельной строкой над шагом, справа: не наезжает на текст на узком экране */
-.join-button {
-  display: block;
-  margin: -8px -8px 4px auto;
+/* Действия над шагом («Начать раздел здесь», «Объединить с предыдущим») отдельной строкой справа:
+   не наезжают на текст на узком экране */
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+  margin: -8px -8px 4px;
 }
 
 .step-head.step-number {
@@ -643,4 +647,37 @@ h1 {
   margin: 0;
   font-size: 13px;
   color: var(--muted);
+}
+
+/* Комментарии к шагам и скриншотам (FR-11) */
+.comment {
+  margin: 4px 0 8px;
+}
+
+.comment-text {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 3em;
+  padding: 6px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 15px;
+  color: var(--text);
+  background: #fffbeb;
+  resize: vertical;
+}
+
+.comment-text[hidden] {
+  display: none;
+}
+
+.comment-text:focus-visible {
+  outline: 3px solid #93c5fd;
+  outline-offset: 1px;
+}
+
+.group-item .comment {
+  flex-basis: 100%;
 }
