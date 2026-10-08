@@ -2,7 +2,7 @@
 // В отличие от HTML и Word, в файле исходные скриншоты без размытия, поэтому он только для автора.
 //
 // Формат — JSON:
-// { format, version, savedAt, docTitle, steps, maskedFields, maskedAreas, joinedSteps, crops, sections,
+// { format, version, savedAt, docTitle, steps, maskedFields, maskedAreas, joinedSteps, crops, sections, comments,
 //   shots: { <id шага>: data URL } }
 // Ошибки и предупреждения возвращаются ключами строк из _locales, как причины отсева в normalize.js.
 
@@ -10,6 +10,7 @@ const PROJECT_FORMAT = "instruction-recorder-project";
 const PROJECT_VERSION = 1;
 const PROJECT_EXTENSION = "instr.json";
 const PROJECT_TITLE_MAX = 200;
+const PROJECT_COMMENT_MAX = 2000;
 
 // Файл проекта из состояния записи (ключи chrome.storage.local) и скриншотов { <id шага>: data URL }
 function buildProject(state, shots, savedAt = new Date()) {
@@ -29,6 +30,7 @@ function buildProject(state, shots, savedAt = new Date()) {
     joinedSteps: state.joinedSteps || [],
     crops: state.crops || {},
     sections: state.sections || [],
+    comments: state.comments || { steps: {}, shots: {} },
     shots: projectShots,
   });
 }
@@ -49,7 +51,7 @@ const isImageDataUrl = (v) => typeof v === "string" && /^data:image\/(jpeg|png);
 // Разбор и проверка файла проекта.
 // Успех: { ok: true, state: {...ключи хранилища}, shots: { <id шага>: data URL }, warnings: [{ key, count }] }
 // Ошибка: { ok: false, error: <ключ строки> }. Непригодные необязательные данные (маски, кадры,
-// объединение, разделы, скриншоты) отбрасываются с предупреждением; повреждённые шаги — ошибка.
+// объединение, разделы, комментарии, скриншоты) отбрасываются с предупреждением; повреждённые шаги — ошибка.
 function parseProject(text) {
   let raw;
   try {
@@ -104,6 +106,16 @@ function parseProject(text) {
       .map(({ id, title, timestamp }) => ({ id, title: title.trim().slice(0, PROJECT_TITLE_MAX), timestamp }))
     : [];
 
+  // Комментарии к шагам и скриншотам (FR-11): только к шагам этой записи, непустые строки
+  const comments = { steps: {}, shots: {} };
+  const rawComments = isPlainObject(raw.comments) ? raw.comments : {};
+  for (const kind of ["steps", "shots"]) {
+    for (const [stepId, text] of Object.entries(isPlainObject(rawComments[kind]) ? rawComments[kind] : {})) {
+      if (ids.has(stepId) && typeof text === "string" && text.trim()) comments[kind][stepId] = text.trim().slice(0, PROJECT_COMMENT_MAX);
+      else dropped += 1;
+    }
+  }
+
   const shots = {};
   for (const [stepId, dataUrl] of Object.entries(isPlainObject(raw.shots) ? raw.shots : {})) {
     if (ids.has(stepId) && isImageDataUrl(dataUrl)) shots[stepId] = dataUrl;
@@ -120,7 +132,7 @@ function parseProject(text) {
 
   return {
     ok: true,
-    state: { steps, maskedFields, maskedAreas, joinedSteps, crops, sections, docTitle },
+    state: { steps, maskedFields, maskedAreas, joinedSteps, crops, sections, comments, docTitle },
     shots,
     warnings,
   };

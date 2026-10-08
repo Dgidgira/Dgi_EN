@@ -32,6 +32,7 @@ const state = {
   joinedSteps: ["s2"],
   crops: { s2: { x: 0, y: 0, width: 0.5, height: 0.75 } },
   sections: [{ id: "r1", title: "Вход в систему", timestamp: 5 }],
+  comments: { steps: { s1: "Фамилия как в паспорте" }, shots: { s2: "Кнопка внизу формы" } },
   docTitle: "Регистрация происшествия (тест)",
 };
 // Скриншот чужого шага в хранилище в файл не попадает
@@ -72,6 +73,7 @@ const messy = parseProject(variant({
   joinedSteps: ["s2", "s2", "nope"],
   crops: { s2: { x: 0, y: 0, width: "1", height: 1 }, nope: { x: 0, y: 0, width: 1, height: 1 } },
   shots: { s1: JPEG, s2: "javascript:alert(1)", nope: JPEG },
+  comments: { steps: { s1: "Фамилия как в паспорте", nope: "чужой", s2: "  " }, shots: { s2: "Кнопка внизу формы", s3: 5 } },
   sections: [state.sections[0], state.sections[0], { id: "r2", title: " ", timestamp: 1 }, { id: "r3", title: "Т", timestamp: "1" }],
 }));
 expect("файл с мусором открывается", messy.ok, true);
@@ -81,9 +83,10 @@ expect("области: неверный прямоугольник и чужо�
 expect("объединение: повтор и чужой шаг отброшены", messy.state.joinedSteps, ["s2"]);
 expect("кадры: неверный и чужой отброшены", messy.state.crops, {});
 expect("разделы: повтор, пустое название и неверное время отброшены", messy.state.sections, state.sections);
+expect("комментарии: чужие, пустые и не строки отброшены", messy.state.comments, state.comments);
 expect("скриншоты: только картинки своих шагов", Object.keys(messy.shots), ["s1"]);
-expect("предупреждения: нет скриншота у 1 шага, отброшено 11 значений", messy.warnings,
-  [{ key: "projectWarnMissingShots", count: 1 }, { key: "projectWarnDropped", count: 11 }]);
+expect("предупреждения: нет скриншота у 1 шага, отброшено 14 значений", messy.warnings,
+  [{ key: "projectWarnMissingShots", count: 1 }, { key: "projectWarnDropped", count: 14 }]);
 
 const result = failures.length
   ? `ПРОВАЛ: ${failures.length} из ${checks}\n` + failures.join("\n")
