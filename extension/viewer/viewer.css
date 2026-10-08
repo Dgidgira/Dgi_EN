@@ -681,3 +681,30 @@ h1 {
 .group-item .comment {
   flex-basis: 100%;
 }
+
+/* Название скриншота: в подписи «Рисунок N – Название» (FR-11) */
+.shot-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin: 8px 0 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.shot-title input {
+  flex: 1 1 240px;
+  min-width: 0;
+  padding: 5px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 15px;
+  color: var(--text);
+}
+
+.shot-title input:focus-visible {
+  outline: 3px solid #93c5fd;
+  outline-offset: 1px;
+}

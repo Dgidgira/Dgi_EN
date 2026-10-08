@@ -1,12 +1,16 @@
-// Комментарии автора для читателя (FR-11): к шагу и к скриншоту. В документе комментарий к шагу —
-// абзац после описания шага, комментарий к скриншоту — подрисуночный текст между рисунком и подписью
-// (ГОСТ 2.105: «Рисунок …» и наименование помещают после поясняющих данных).
+// Тексты автора для читателя (FR-11): комментарий к шагу, название скриншота и текст к скриншоту.
+// В документе комментарий к шагу — абзац после описания шага; название скриншота — в подписи
+// «Рисунок N – Название» (без названия — «Рисунок N – Шаг K»); текст к скриншоту — абзацы основного
+// текста сразу после подписи рисунка.
 //
-// Хранение: chrome.storage.local, ключ "comments" — { steps: { <id шага>: текст }, shots: { <id шага>: текст } }.
-// Комментарий к скриншоту привязан к шагу, чей снимок показан. Шаги объединяются и разделяются
-// (FR-7), поэтому у группы комментарий к скриншоту собирается со всех её шагов.
+// Хранение: chrome.storage.local, ключ "comments" —
+// { steps: { <id шага>: текст }, shots: { <id шага>: текст }, titles: { <id шага>: название } }.
+// Текст и название скриншота привязаны к шагу, чей снимок показан. Шаги объединяются и разделяются
+// (FR-7), поэтому у группы текст к скриншоту собирается со всех её шагов, а название берётся
+// у шага со снимком или у последнего шага группы, у которого оно есть.
 
 const COMMENT_MAX = 2000;
+const SHOT_TITLE_MAX = 300;
 
 // Текст комментария: без пробелов по краям и лишних пустых строк; null — пустой
 function cleanComment(text) {
@@ -19,14 +23,24 @@ function cleanComment(text) {
   return clean || null;
 }
 
-function normalizeComments(comments) {
-  return { steps: { ...(comments?.steps || {}) }, shots: { ...(comments?.shots || {}) } };
+// Название скриншота: одна строка; null — пустое
+function cleanShotTitle(text) {
+  return String(text || "").replace(/\s+/g, " ").trim().slice(0, SHOT_TITLE_MAX) || null;
 }
 
-// Записать комментарий к шагу или скриншоту (kind — "steps" или "shots"); пустой текст удаляет комментарий
+function normalizeComments(comments) {
+  return {
+    steps: { ...(comments?.steps || {}) },
+    shots: { ...(comments?.shots || {}) },
+    titles: { ...(comments?.titles || {}) },
+  };
+}
+
+// Записать комментарий к шагу, текст к скриншоту или название скриншота (kind — "steps", "shots"
+// или "titles"); пустой текст удаляет запись
 function setComment(comments, kind, stepId, text) {
   const next = normalizeComments(comments);
-  const clean = cleanComment(text);
+  const clean = kind === "titles" ? cleanShotTitle(text) : cleanComment(text);
   if (clean) next[kind][stepId] = clean;
   else delete next[kind][stepId];
   return next;
@@ -48,6 +62,20 @@ function setGroupShotComment(comments, group, text) {
   for (const { step } of group.items) delete next.shots[step.id];
   next = setComment(next, "shots", group.shotStep.id, text);
   return next;
+}
+
+// Название скриншота группы: у шага со снимком, иначе у последнего шага группы, у которого оно есть
+function groupShotTitle(comments, group) {
+  const titles = comments?.titles || {};
+  if (titles[group.shotStep.id]) return titles[group.shotStep.id];
+  return [...group.items].reverse().map(({ step }) => titles[step.id]).find(Boolean) || "";
+}
+
+// Записать название скриншота группы: хранится у шага со снимком, названия остальных шагов удаляются
+function setGroupShotTitle(comments, group, text) {
+  const next = normalizeComments(comments);
+  for (const { step } of group.items) delete next.titles[step.id];
+  return setComment(next, "titles", group.shotStep.id, text);
 }
 
 // Абзацы комментария для документа

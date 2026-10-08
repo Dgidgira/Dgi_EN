@@ -30,7 +30,7 @@ function buildProject(state, shots, savedAt = new Date()) {
     joinedSteps: state.joinedSteps || [],
     crops: state.crops || {},
     sections: state.sections || [],
-    comments: state.comments || { steps: {}, shots: {} },
+    comments: state.comments || { steps: {}, shots: {}, titles: {} },
     shots: projectShots,
   });
 }
@@ -106,10 +106,10 @@ function parseProject(text) {
       .map(({ id, title, timestamp }) => ({ id, title: title.trim().slice(0, PROJECT_TITLE_MAX), timestamp }))
     : [];
 
-  // Комментарии к шагам и скриншотам (FR-11): только к шагам этой записи, непустые строки
-  const comments = { steps: {}, shots: {} };
+  // Комментарии к шагам, тексты и названия скриншотов (FR-11): только к шагам этой записи, непустые строки
+  const comments = { steps: {}, shots: {}, titles: {} };
   const rawComments = isPlainObject(raw.comments) ? raw.comments : {};
-  for (const kind of ["steps", "shots"]) {
+  for (const kind of ["steps", "shots", "titles"]) {
     for (const [stepId, text] of Object.entries(isPlainObject(rawComments[kind]) ? rawComments[kind] : {})) {
       if (ids.has(stepId) && typeof text === "string" && text.trim()) comments[kind][stepId] = text.trim().slice(0, PROJECT_COMMENT_MAX);
       else dropped += 1;

@@ -92,12 +92,12 @@ expectTrue("без разделов шаги — h2", html.includes('<h2 class="
 const commented = buildHtml({
   title: "С комментариями", meta: null,
   sections: [{ heading: "Шаг 1", items: [{ label: null, text: "Введите логин", comment: "Логин <выдаёт>\nадминистратор" }],
-    image: { dataUrl: PIXEL, width: 800, height: 450 }, figureText: "Кнопка внизу", caption: { label: "Рисунок", number: 1, name: "Шаг 1" } }],
+    image: { dataUrl: PIXEL, width: 800, height: 450 }, figureText: "Кнопка внизу", caption: { label: "Рисунок", number: 1, name: "Форма входа" } }],
 }, styles);
 expectTrue("комментарий к шагу — абзацы после описания, экранирован",
   commented.includes('Введите логин</p><p class="step-comment">Логин &lt;выдаёт&gt;</p><p class="step-comment">администратор</p>'));
-expectTrue("подрисуночный текст между рисунком и подписью",
-  commented.includes('alt="Шаг 1"><p class="figure-text">Кнопка внизу</p><figcaption>Рисунок 1 – Шаг 1</figcaption>'));
+expectTrue("название скриншота в подписи, текст к скриншоту — абзац после подписи",
+  commented.includes('alt="Форма входа"><figcaption>Рисунок 1 – Форма входа</figcaption></figure><p class="figure-text">Кнопка внизу</p>'));
 
 const result = failures.length
   ? `ПРОВАЛ: ${failures.length} из ${checks}\n` + failures.join("\n")

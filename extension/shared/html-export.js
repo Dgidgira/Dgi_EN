@@ -6,7 +6,8 @@
 // Модель документа та же, что у shared/docx.js, но у картинки вместо байтов dataUrl:
 // { title, meta, sections: [{ chapter: { number, title } | undefined, heading, items: [{ label, text }],
 //   image: { dataUrl, width, height } | null, figureText, caption: { label, number, name } | null }] }
-// items[].comment — комментарий к шагу, figureText — подрисуночный текст (FR-11), абзацы через перевод строки.
+// items[].comment — комментарий к шагу, figureText — текст к скриншоту после подписи рисунка (FR-11),
+// абзацы через перевод строки; caption.name — название скриншота или «Шаг K».
 // С разделами (FR-10) раздел — h2, шаг — h3; без разделов шаг — h2.
 
 function escapeHtml(text) {
@@ -45,7 +46,9 @@ function htmlSection(section, styles, bySection) {
         (section.caption.name ? ` – ${section.caption.name}` : ""))}</figcaption>`
       : "";
     parts.push(`<figure><img src="${section.image.dataUrl}" width="${section.image.width}" height="${section.image.height}" ` +
-      `alt="${escapeHtml(section.heading)}">${htmlParagraphs(section.figureText, "figure-text")}${caption}</figure>`);
+      `alt="${escapeHtml(section.caption?.name || section.heading)}">${caption}</figure>` +
+      // Текст к скриншоту — с нового абзаца после подписи, оформлен как основной текст
+      htmlParagraphs(section.figureText, "figure-text"));
   }
   const chapter = section.chapter
     ? `<h2 class="chapter">${escapeHtml(`${section.chapter.number} ${section.chapter.title}`)}</h2>\n`
@@ -74,9 +77,7 @@ function buildHtml(doc, styles) {
     .num { font-weight: bold; color: #${colors.stepNumber}; }
     figure { margin: ${spacing.beforeImagePt}pt 0 ${spacing.afterImagePt}pt; text-align: center; break-inside: avoid; }
     img { max-width: ${image.maxWidthPercent}%; height: auto; ${image.border ? `border: 1px solid #${image.borderColor};` : ""} }
-    .step-comment { margin: 0 0 ${spacing.afterParagraphPt}pt; text-indent: ${paragraph.firstLineIndentMm}mm; text-align: ${textAlign}; }
-    .figure-text { margin: ${spacing.afterImagePt}pt 0 0; font-size: ${sizesPt.caption}pt; }
-    .figure-text + .figure-text, .figure-text + figcaption { margin-top: 0; }
+    .step-comment, .figure-text { margin: 0 0 ${spacing.afterParagraphPt}pt; text-indent: ${paragraph.firstLineIndentMm}mm; text-align: ${textAlign}; }
     figcaption { margin: ${spacing.afterImagePt}pt 0 ${spacing.afterCaptionPt}pt; font-size: ${sizesPt.caption}pt; }
     @media print { body { max-width: none; margin: 0; padding: 0; } }
   `.replace(/\n\s+/g, "\n");

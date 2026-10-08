@@ -221,23 +221,25 @@ const commented = {
   sections: [
     { heading: "Шаги 1–2", items: [{ label: "1.", text: "Введите логин", comment: "Логин выдаёт администратор\nОн совпадает с почтой" },
       { label: "2.", text: "Войти", comment: "" }],
-      image: { bytes: jpeg, width: 4, height: 3 }, figureText: "Кнопка «Войти» внизу формы", caption: { label: "Рисунок", number: 1, name: "Шаги 1–2" } },
+      image: { bytes: jpeg, width: 4, height: 3 }, figureText: "Кнопка «Войти» внизу формы", caption: { label: "Рисунок", number: 1, name: "Форма входа" } },
   ],
 };
 const commentedDoc = part("word/document.xml", docxFiles(commented, defaults.styles));
 const paragraphOrder = [...commentedDoc.matchAll(/<w:pStyle w:val="([A-Za-z0-9]+)"\/>/g)].map((m) => m[1]);
-expect("порядок: шаг, его комментарий по абзацам, шаг без комментария, рисунок, подрисуночный текст, подпись", paragraphOrder,
-  ["Title", "Heading1", "StepText", "StepComment", "StepComment", "StepText", "StepImage", "FigureText", "Caption"]);
-expectTrue("комментарий и подрисуночный текст держатся с рисунком (keepNext)",
-  /w:val="StepComment"\/><w:keepNext\/>/.test(commentedDoc) && /w:val="FigureText"\/><w:keepNext\/>/.test(commentedDoc));
+expect("порядок: шаг, его комментарий по абзацам, шаг без комментария, рисунок, подпись, текст к скриншоту", paragraphOrder,
+  ["Title", "Heading1", "StepText", "StepComment", "StepComment", "StepText", "StepImage", "Caption", "FigureText"]);
+expectTrue("комментарий к шагу держится с рисунком, текст к скриншоту — обычный абзац",
+  /w:val="StepComment"\/><w:keepNext\/>/.test(commentedDoc) && /w:val="FigureText"\/><\/w:pPr>/.test(commentedDoc));
+expectTrue("текст к скриншоту оформлен как основной текст", stylesPart.includes('w:styleId="FigureText"><w:name w:val="Figure Text"/><w:basedOn w:val="Normal"/><w:qFormat/><w:pPr></w:pPr><w:rPr></w:rPr>'));
 expectTrue("стили комментариев есть", stylesPart.includes('w:styleId="StepComment"') && stylesPart.includes('w:styleId="FigureText"'));
 const commentPath = `${dir}-comments.docx`;
 writeBytes(commentPath, buildDocx(commented, defaults.styles));
 const commentText = shell(`textutil -convert txt -stdout '${commentPath}'`);
 shell(`rm -f '${commentPath}'`);
-for (const expected of ["Логин выдаёт администратор", "Он совпадает с почтой", "Кнопка «Войти» внизу формы"]) {
+for (const expected of ["Логин выдаёт администратор", "Он совпадает с почтой", "Рисунок 1 – Форма входа", "Кнопка «Войти» внизу формы"]) {
   expectTrue(`textutil читает: ${expected}`, commentText.includes(expected), `\n  текст документа:\n${commentText}`);
 }
+expectTrue("textutil: текст к скриншоту после подписи", commentText.indexOf("Рисунок 1 – Форма входа") < commentText.indexOf("Кнопка «Войти»"));
 
 const result = failures.length
   ? `ПРОВАЛ: ${failures.length} из ${checks}\n` + failures.join("\n")

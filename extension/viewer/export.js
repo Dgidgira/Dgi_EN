@@ -226,10 +226,15 @@ async function buildExportDoc(onProgress) {
       // Подпись «Рисунок N – Шаг K» («Рисунок 2.3 – Шаг 2.4» в разделе); шаги без скриншота пропускаются
       const figure = image ? ++figureNumber : null;
       const caption = image
-        ? { label: t("exportFigureLabel"), number: part.section ? `${part.section.number}.${figure}` : figure, name: heading }
+        ? {
+          label: t("exportFigureLabel"),
+          number: part.section ? `${part.section.number}.${figure}` : figure,
+          // Название скриншота, введённое автором, иначе «Шаг K» (FR-11)
+          name: groupShotTitle(comments, group) || heading,
+        }
         : null;
       const chapter = part.section && index === 0 ? { number: part.section.number, title: part.section.title } : undefined;
-      // Подрисуночный текст — комментарий автора к скриншоту (FR-11)
+      // Текст автора к скриншоту — абзацы после подписи рисунка (FR-11)
       const figureText = image ? groupShotComment(comments, group) : "";
       sections.push({ chapter, heading, items, image, figureText, caption });
     }

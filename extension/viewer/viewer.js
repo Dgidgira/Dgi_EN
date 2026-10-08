@@ -5,7 +5,7 @@
 // (FR-6, shared/mask.js). Соседние шаги можно объединить под одним скриншотом (FR-7, shared/groups.js),
 // скриншот можно кадрировать (FR-7, shared/crop.js). Шаги делятся на разделы, созданные во время записи;
 // название раздела можно исправить, раздел — удалить или начать с любого шага (FR-10, shared/sections.js).
-// К шагам и скриншотам можно написать комментарий для читателя (FR-11, shared/comments.js).
+// К шагам можно написать комментарий для читателя, скриншоту — дать название и текст (FR-11, shared/comments.js).
 
 const t = (key, substitutions) => chrome.i18n.getMessage(key, substitutions);
 
@@ -451,6 +451,23 @@ async function saveComment(update) {
   await chrome.storage.local.set({ comments: update(stored) });
 }
 
+// Поле «Название рисунка»: подсказка — название по умолчанию; сохраняется при уходе из поля или по Enter
+function shotTitleEditor(group, defaultName) {
+  const label = el("label", "shot-title");
+  label.append(el("span", null, t("viewerShotTitleLabel")));
+  const input = el("input");
+  input.type = "text";
+  input.maxLength = SHOT_TITLE_MAX;
+  input.value = groupShotTitle(comments, group);
+  input.placeholder = defaultName;
+  input.addEventListener("change", () => saveComment((stored) => setGroupShotTitle(stored, group, input.value)));
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") input.blur();
+  });
+  label.append(input);
+  return label;
+}
+
 function stepCommentEditor(step) {
   return commentEditor(stepComment(comments, step.id), "viewerCommentAdd", "viewerCommentPlaceholder",
     (text) => saveComment((stored) => setComment(stored, "steps", step.id, text)));
@@ -505,7 +522,12 @@ function renderGroup(group, isFirstGroup, shotOf, canStartSection) {
       () => openCropEditor(group.shotStep, dataUrl, frames, areas));
     cropButton.classList.add("crop-open");
     card.append(cropButton);
-    // Подрисуночный текст: в документе между скриншотом и подписью «Рисунок N»
+    // Название скриншота — в подписи «Рисунок N – Название» (без названия — «Шаг K»);
+    // текст к скриншоту — абзацы после подписи
+    const defaultName = multi
+      ? t("viewerGroupNumbers", [String(shown[0].number), String(shown[shown.length - 1].number)])
+      : t("viewerStepNumber", [String(shown[0].number)]);
+    card.append(shotTitleEditor(group, defaultName));
     card.append(commentEditor(groupShotComment(comments, group), "viewerShotCommentAdd", "viewerShotCommentPlaceholder",
       (text) => saveComment((stored) => setGroupShotComment(stored, group, text))));
   }

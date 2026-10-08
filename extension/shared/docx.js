@@ -6,8 +6,9 @@
 // Модель документа (её собирает страница просмотра):
 // { title, meta, sections: [{ chapter: { number, title } | undefined, heading, items: [{ label, text, comment }],
 //   image: { bytes, width, height } | null, figureText, caption: { label, number, name } | null }] }
-// comment — комментарий автора к шагу, абзацы через перевод строки (FR-11); figureText — подрисуночный
-// текст между рисунком и подписью (ГОСТ 2.105), тоже абзацы через перевод строки;
+// comment — комментарий автора к шагу, абзацы через перевод строки (FR-11); figureText — текст автора
+// к скриншоту: абзацы основного текста сразу после подписи рисунка; caption.name — название скриншота
+// или «Шаг K»;
 // chapter — у первого блока раздела инструкции (FR-10): перед блоком заголовок первого уровня «1 Название»,
 // а заголовки шагов опускаются на второй уровень; label — номер шага («3.» или «2.3.») или null;
 // image.bytes — JPEG; caption — подпись рисунка по ГОСТ 34 / ГОСТ 2.105: «Рисунок 1 – Шаг 1»,
@@ -217,12 +218,10 @@ function documentXml(doc, styles) {
       imageIndex += 1;
       const extent = imageExtent(section.image, styles);
       const caption = styles.image.captions && section.caption;
-      const figureText = commentLines(section.figureText);
-      body.push(paragraph("StepImage", drawing(extent, `rIdImage${imageIndex}`, imageIndex, styles),
-        caption || figureText.length ? keepNext : ""));
-      figureText.forEach((line, i) =>
-        body.push(paragraph("FigureText", textRun(line), caption || i < figureText.length - 1 ? keepNext : "")));
+      body.push(paragraph("StepImage", drawing(extent, `rIdImage${imageIndex}`, imageIndex, styles), caption ? keepNext : ""));
       if (caption) body.push(paragraph("Caption", captionContent(caption, bySection)));
+      // Текст к скриншоту — с нового абзаца после подписи, оформлен как основной текст
+      for (const line of commentLines(section.figureText)) body.push(paragraph("FigureText", textRun(line)));
     }
   }
 
@@ -242,7 +241,7 @@ function documentXml(doc, styles) {
 // заголовок раздела ≈ «КИСУСС_заголовок 1ур», заголовок шага ≈ «КИСУСС_заголовок 2ур»,
 // StepImage ≈ «КИСУСС_рисунок положение», Caption ≈ «КИСУСС_рисунок название»,
 // Header ≈ «КИСУСС_колонтитул верхний». StepComment — комментарий к шагу (как основной текст),
-// FigureText — подрисуночный текст (как подпись рисунка). С разделами Heading1 — раздел, Heading2 — шаг;
+// FigureText — текст к скриншоту после подписи (как основной текст). С разделами Heading1 — раздел, Heading2 — шаг;
 // без разделов Heading1 — шаг
 function stylesXml(styles, bySection = false) {
   const { fonts, sizesPt, colors, spacing, paragraph: para } = styles;
@@ -280,7 +279,7 @@ function stylesXml(styles, bySection = false) {
     style("StepComment", "Step Comment", "", "") +
     style("StepImage", "Step Image",
       `<w:spacing w:before="${ptToTwips(spacing.beforeImagePt)}" w:after="${ptToTwips(spacing.afterImagePt)}"/>${centered}`, "<w:noProof/>") +
-    style("FigureText", "Figure Text", `<w:spacing w:after="0"/>${centered}`, size(sizesPt.caption)) +
+    style("FigureText", "Figure Text", "", "") +
     style("Caption", "caption", `<w:spacing w:after="${ptToTwips(spacing.afterCaptionPt)}"/>${centered}`, size(sizesPt.caption)) +
     style("Header", "header", `<w:spacing w:after="0"/>${centered}`, size(sizesPt.pageNumber)) +
     `</w:styles>`;

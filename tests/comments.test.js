@@ -33,7 +33,7 @@ let comments = setComment(undefined, "steps", "a", "Поле обязатель�
 expect("комментарий к шагу записан", stepComment(comments, "a"), "Поле обязательное");
 expect("исходный объект не меняется", setComment(comments, "steps", "a", "Другой") !== comments && stepComment(comments, "a"), "Поле обязательное");
 comments = setComment(comments, "steps", "a", "  ");
-expect("пустой текст удаляет комментарий", comments, { steps: {}, shots: {} });
+expect("пустой текст удаляет комментарий", comments, { steps: {}, shots: {}, titles: {} });
 expect("нет комментария — пустая строка", stepComment(undefined, "x"), "");
 
 // --- Комментарии к скриншотам групп
@@ -47,6 +47,19 @@ comments = setGroupShotComment(comments, group, "Общий текст");
 expect("правка группы: текст у шага со снимком, остальные удалены", comments.shots, { c: "Общий текст" });
 expect("после разделения комментарий остаётся у шага со снимком", groupShotComment(comments, single), "");
 expect("пустая правка группы удаляет комментарий", setGroupShotComment(comments, group, "").shots, {});
+
+// --- Названия скриншотов
+expect("название — одна строка без лишних пробелов", cleanShotTitle("  Форма \n карточки  "), "Форма карточки");
+expect("пустое название — null", cleanShotTitle("  "), null);
+let titled = setGroupShotTitle(undefined, single, "Форма входа");
+expect("название скриншота шага", groupShotTitle(titled, single), "Форма входа");
+expect("без названия — пустая строка", groupShotTitle(undefined, single), "");
+expect("в группе — название ранее отдельного шага, если у снимка группы нет своего", groupShotTitle(titled, group), "Форма входа");
+titled = setComment(titled, "titles", "c", "Заполненная форма");
+expect("в группе приоритет у шага со снимком", groupShotTitle(titled, group), "Заполненная форма");
+titled = setGroupShotTitle(titled, group, "Итог");
+expect("правка группы: название у шага со снимком, остальные удалены", titled.titles, { c: "Итог" });
+expect("пустая правка удаляет название", setGroupShotTitle(titled, group, " ").titles, {});
 
 const result = failures.length
   ? `ПРОВАЛ: ${failures.length} из ${checks}\n` + failures.join("\n")
