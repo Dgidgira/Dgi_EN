@@ -533,6 +533,22 @@
   "exportTitleLabel": {
     "message": "Название инструкции"
   },
+  "ribbonHtml": {
+    "message": "HTML",
+    "description": "Короткая подпись кнопки «Скачать HTML» на ленте"
+  },
+  "ribbonDocx": {
+    "message": "Word",
+    "description": "Короткая подпись кнопки «Скачать Word» на ленте"
+  },
+  "ribbonSave": {
+    "message": "Сохранить",
+    "description": "Короткая подпись кнопки «Сохранить проект» на ленте"
+  },
+  "ribbonOpen": {
+    "message": "Открыть",
+    "description": "Короткая подпись кнопки «Открыть проект» на ленте"
+  },
   "exportDefaultTitle": {
     "message": "Инструкция"
   },
@@ -596,7 +612,7 @@
     "message": "Нет шагов для сохранения"
   },
   "projectSaved": {
-    "message": "Проект сохранён в папку загрузок"
+    "message": "Проект сохранён в папку загрузок. В нём скриншоты без размытия — не передавайте его читателям"
   },
   "projectSaveFailed": {
     "message": "Не удалось сохранить проект: $ERROR$",

@@ -64,6 +64,14 @@ function el(tag, className, text) {
   return node;
 }
 
+// Подпись кнопки ленты: видимая подпись (на узком окне скрыта) и всплывающая подсказка,
+// она же имя кнопки для экранного диктора
+function setRibbonLabel(button, label, tip = label) {
+  button.querySelector(".ribbon-label").textContent = label;
+  button.title = tip;
+  button.setAttribute("aria-label", tip);
+}
+
 // Прямоугольник в долях снимка (0..1) — в проценты для CSS
 function fractionStyle(rect) {
   return {
@@ -590,9 +598,9 @@ function renderStats(steps, dropped, groups) {
 }
 
 function renderMaskToolbar() {
-  fieldModeEl.textContent = t(mode === "fields" ? "viewerMaskModeDone" : "viewerMaskModeStart");
+  setRibbonLabel(fieldModeEl, t(mode === "fields" ? "viewerMaskModeDone" : "viewerMaskModeStart"));
   fieldModeEl.setAttribute("aria-pressed", String(mode === "fields"));
-  areaModeEl.textContent = t(mode === "areas" ? "viewerMaskModeDone" : "viewerMaskAreaStart");
+  setRibbonLabel(areaModeEl, t(mode === "areas" ? "viewerMaskModeDone" : "viewerMaskAreaStart"));
   areaModeEl.setAttribute("aria-pressed", String(mode === "areas"));
   maskHintEl.hidden = !mode;
   maskHintEl.textContent = mode === "areas" ? t("viewerMaskAreaHint") : t("viewerMaskHint");

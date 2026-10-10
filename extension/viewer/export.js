@@ -17,9 +17,10 @@ const exportHtmlEl = document.getElementById("export-html");
 const exportDocxEl = document.getElementById("export-docx");
 const exportStatusEl = document.getElementById("export-status");
 
-document.getElementById("doc-title-label").textContent = t("exportTitleLabel");
-exportHtmlEl.textContent = t("exportHtml");
-exportDocxEl.textContent = t("exportDocx");
+docTitleEl.title = t("exportTitleLabel");
+docTitleEl.setAttribute("aria-label", t("exportTitleLabel"));
+setRibbonLabel(exportHtmlEl, t("ribbonHtml"), t("exportHtml"));
+setRibbonLabel(exportDocxEl, t("ribbonDocx"), t("exportDocx"));
 
 // --- Название инструкции: хранится в chrome.storage.local, ключ "docTitle" ---
 
@@ -267,8 +268,10 @@ async function exportDocument(format) {
     exportStatusEl.textContent = t("exportNothing");
     return;
   }
+  const button = format === "html" ? exportHtmlEl : exportDocxEl;
   exportHtmlEl.disabled = true;
   exportDocxEl.disabled = true;
+  button.classList.add("busy");
   try {
     const styles = await loadExportStyles();
     const doc = await buildExportDoc((done, total) => {
@@ -286,6 +289,7 @@ async function exportDocument(format) {
     console.error("Выгрузка не удалась", error);
     exportStatusEl.textContent = t("exportFailed", [String(error?.message || error)]);
   } finally {
+    button.classList.remove("busy");
     exportHtmlEl.disabled = false;
     exportDocxEl.disabled = false;
   }

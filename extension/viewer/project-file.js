@@ -12,9 +12,9 @@ const projectOpenEl = document.getElementById("project-open");
 const projectFileEl = document.getElementById("project-file");
 const projectStatusEl = document.getElementById("project-status");
 
-projectSaveEl.textContent = t("projectSave");
-projectOpenEl.textContent = t("projectOpen");
-document.getElementById("project-hint").textContent = t("projectHint");
+// Предупреждение о скриншотах без размытия — в подсказке кнопки и в сообщении после сохранения
+setRibbonLabel(projectSaveEl, t("ribbonSave"), `${t("projectSave")}. ${t("projectHint")}`);
+setRibbonLabel(projectOpenEl, t("ribbonOpen"), t("projectOpen"));
 
 function setProjectBusy(busy) {
   projectSaveEl.disabled = busy;

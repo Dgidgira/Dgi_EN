@@ -6,37 +6,43 @@
   <link rel="stylesheet" href="viewer.css">
 </head>
 <body>
-  <h1 id="title"></h1>
-  <p id="stats" class="stats" hidden></p>
-  <div class="export-bar">
-    <label class="doc-title-field">
-      <span id="doc-title-label"></span>
-      <input id="doc-title" type="text" maxlength="200" autocomplete="off">
-    </label>
-    <button id="export-html" type="button" class="export-button"></button>
-    <button id="export-docx" type="button" class="export-button"></button>
-    <span id="export-status" class="tool-note" role="status"></span>
-  </div>
-  <div class="project-bar">
-    <button id="project-save" type="button" class="project-button"></button>
-    <button id="project-open" type="button" class="project-button"></button>
-    <input id="project-file" type="file" accept=".json,application/json" hidden>
-    <span id="project-status" class="tool-note" role="status"></span>
-    <p id="project-hint" class="project-hint"></p>
-  </div>
-  <div class="toolbar">
-    <button id="mask-mode" type="button" class="tool-button" aria-pressed="false"></button>
-    <button id="area-mode" type="button" class="tool-button" aria-pressed="false"></button>
-    <span id="mask-count" class="tool-note"></span>
-  </div>
-  <p id="mask-hint" class="mask-hint" hidden></p>
-  <p id="empty" class="empty" hidden></p>
-  <ol id="steps" class="steps"></ol>
-  <details id="dropped" class="dropped-section" hidden>
-    <summary id="dropped-title"></summary>
-    <p id="dropped-hint" class="dropped-hint"></p>
-    <ul id="dropped-steps" class="steps"></ul>
-  </details>
+  <!-- Лента (упрощённая лента в духе Office): все элементы управления закреплены вверху и видны
+       при любой прокрутке. Иконки — свои SVG, без внешних ресурсов -->
+  <header class="ribbon">
+    <div class="ribbon-row">
+      <h1 id="title" class="visually-hidden"></h1>
+      <input id="doc-title" class="ribbon-title" type="text" maxlength="200" autocomplete="off">
+      <span class="ribbon-sep" aria-hidden="true"></span>
+      <button id="export-html" type="button" class="ribbon-button export"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 7-5 5 5 5"/><path d="m16 7 5 5-5 5"/><path d="m14 4-4 16"/></svg><span class="ribbon-label"></span></button>
+      <button id="export-docx" type="button" class="ribbon-button export"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="m8.5 12 1.2 5 1.8-4 1.8 4 1.2-5"/></svg><span class="ribbon-label"></span></button>
+      <span class="ribbon-sep" aria-hidden="true"></span>
+      <button id="project-save" type="button" class="ribbon-button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-7H7v7"/><path d="M7 3v4h8"/></svg><span class="ribbon-label"></span></button>
+      <button id="project-open" type="button" class="ribbon-button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9V6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v1"/><path d="M3 9h18l-1.6 9.2a1 1 0 0 1-1 .8H5.6a1 1 0 0 1-1-.8z"/></svg><span class="ribbon-label"></span></button>
+      <input id="project-file" type="file" accept=".json,application/json" hidden>
+      <span class="ribbon-sep" aria-hidden="true"></span>
+      <button id="mask-mode" type="button" class="ribbon-button" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 3 18 18"/><path d="M10.6 5.1A10 10 0 0 1 12 5c5 0 9 4.5 10 7-.4 1-1.2 2.3-2.4 3.5"/><path d="M6.6 6.6C4.4 8 2.8 10.2 2 12c1 2.5 5 7 10 7 1.7 0 3.3-.5 4.6-1.3"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg><span class="ribbon-label"></span></button>
+      <button id="area-mode" type="button" class="ribbon-button" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="2.5" stroke-dasharray="3 2.6"/><path d="M8 10.5h8"/><path d="M8 13.5h5"/></svg><span class="ribbon-label"></span></button>
+      <span class="ribbon-spacer"></span>
+      <span id="mask-count" class="ribbon-meta"></span>
+    </div>
+    <p id="mask-hint" class="mask-hint" hidden></p>
+  </header>
+  <main class="page">
+    <p id="empty" class="empty" hidden></p>
+    <ol id="steps" class="steps"></ol>
+    <details id="dropped" class="dropped-section" hidden>
+      <summary id="dropped-title"></summary>
+      <p id="dropped-hint" class="dropped-hint"></p>
+      <ul id="dropped-steps" class="steps"></ul>
+    </details>
+  </main>
+  <!-- Строка состояния: сводка по записи и ход выгрузки -->
+  <footer class="statusbar">
+    <span id="stats" class="stats" hidden></span>
+    <span class="statusbar-spacer"></span>
+    <span id="project-status" role="status"></span>
+    <span id="export-status" role="status"></span>
+  </footer>
   <script src="../shared/describe.js"></script>
   <script src="../shared/normalize.js"></script>
   <script src="../shared/mask.js"></script>

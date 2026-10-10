@@ -10,17 +10,223 @@
 }
 
 body {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 24px 16px;
+  margin: 0;
+  /* Место под строку состояния внизу */
+  padding: 0 0 36px;
   font: 15px system-ui, sans-serif;
   color: var(--text);
   background: var(--surface);
 }
 
-h1 {
-  margin: 0 0 20px;
-  font-size: 22px;
+/* Колонка с шагами под лентой */
+.page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 20px 16px 24px;
+}
+
+/* Скрыт с экрана, но доступен экранному диктору */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Лента: все элементы управления закреплены вверху во всю ширину окна */
+.ribbon {
+  position: sticky;
+  z-index: 10;
+  top: 0;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 2px 10px rgb(17 24 39 / 0.06);
+}
+
+.ribbon-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 50px;
+  padding: 0 12px;
+  overflow-x: auto;
+  font-size: 13px;
+}
+
+.ribbon-title {
+  flex: 0 1 260px;
+  min-width: 120px;
+  padding: 5px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font: 600 14px system-ui, sans-serif;
+  color: var(--text);
+  background: none;
+}
+
+.ribbon-title:hover {
+  border-color: var(--border);
+}
+
+.ribbon-title:focus-visible {
+  border-color: #d1d5db;
+  outline: 3px solid #93c5fd;
+  outline-offset: 0;
+  background: var(--card);
+}
+
+.ribbon-sep {
+  flex: none;
+  width: 1px;
+  height: 22px;
+  margin: 0 6px;
+  background: var(--border);
+}
+
+.ribbon-spacer {
+  flex: 1;
+}
+
+.ribbon-button {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 8px;
+  font: inherit;
+  color: var(--text);
+  background: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.12s, color 0.12s;
+}
+
+.ribbon-button svg {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ribbon-button.export svg {
+  color: #16a34a;
+}
+
+.ribbon-button:hover {
+  background: #f3f4f6;
+}
+
+.ribbon-button:focus-visible {
+  outline: 3px solid #93c5fd;
+  outline-offset: 1px;
+}
+
+.ribbon-button:disabled {
+  opacity: 0.45;
+  cursor: progress;
+}
+
+.ribbon-button[aria-pressed="true"] {
+  color: var(--target);
+  background: #dbeafe;
+}
+
+/* Идёт выгрузка: вместо иконки вращающееся кольцо */
+.ribbon-button.busy svg {
+  display: none;
+}
+
+.ribbon-button.busy::before {
+  content: "";
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 1px;
+  border: 2px solid #16a34a;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: ribbon-spin 0.8s linear infinite;
+}
+
+@keyframes ribbon-spin {
+  to { transform: rotate(360deg); }
+}
+
+.ribbon-meta {
+  flex: none;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* На узком окне у команд остаются только иконки, подпись — во всплывающей подсказке */
+@media (max-width: 1100px) {
+  .ribbon-label {
+    display: none;
+  }
+
+  .ribbon-button {
+    padding: 0 8px;
+  }
+}
+
+/* Подсказка режима скрытия — второй строкой ленты */
+.mask-hint {
+  margin: 0;
+  padding: 8px 16px;
+  font-size: 14px;
+  text-align: center;
+  color: #1e3a8a;
+  background: #eff6ff;
+  border-top: 1px solid #bfdbfe;
+}
+
+/* Строка состояния внизу окна: сводка по записи и ход выгрузки */
+.statusbar {
+  position: fixed;
+  z-index: 10;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 28px;
+  padding: 0 16px;
+  font-size: 12px;
+  color: var(--muted);
+  background: #f8fafc;
+  border-top: 1px solid var(--border);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.statusbar-spacer {
+  flex: 1;
+}
+
+.statusbar [role="status"] {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ribbon-button {
+    transition: none;
+  }
+
+  .ribbon-button.busy::before {
+    animation-duration: 2.4s;
+  }
 }
 
 .empty {
@@ -55,11 +261,6 @@ h1 {
 
 .step-text {
   font-size: 17px;
-}
-
-.stats {
-  margin: -8px 0 20px;
-  color: var(--muted);
 }
 
 .step-debug {
@@ -161,45 +362,6 @@ h1 {
 }
 
 /* Маскирование полей (FR-6) */
-.toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 12px;
-  margin: 0 0 12px;
-}
-
-.tool-button {
-  padding: 8px 14px;
-  border: none;
-  border-radius: 10px;
-  font: inherit;
-  font-weight: 600;
-  color: #fff;
-  background: var(--mask);
-  cursor: pointer;
-}
-
-.tool-button[aria-pressed="true"] {
-  background: var(--target);
-}
-
-.tool-button:focus-visible {
-  outline: 3px solid #93c5fd;
-  outline-offset: 2px;
-}
-
-.tool-note {
-  color: var(--muted);
-}
-
-.mask-hint {
-  margin: 0 0 20px;
-  padding: 10px 14px;
-  border-radius: 10px;
-  background: #dbeafe;
-  color: #1e3a8a;
-}
 
 /* Размытие области: без подложки и цветового сдвига, со скруглёнными краями.
    Радиус достаточный, чтобы по размытому тексту нельзя было угадать символы */
@@ -497,109 +659,6 @@ h1 {
 .crop-button:focus-visible {
   outline: 3px solid #93c5fd;
   outline-offset: 2px;
-}
-
-/* Выгрузка документа (FR-8) */
-.export-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 8px 12px;
-  margin: 0 0 16px;
-  padding: 12px 14px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--card);
-}
-
-.doc-title-field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex: 1 1 280px;
-  font-size: 13px;
-  color: var(--muted);
-}
-
-.doc-title-field input {
-  padding: 8px 10px;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font: inherit;
-  font-size: 15px;
-  color: var(--text);
-}
-
-.doc-title-field input:focus-visible {
-  outline: 3px solid #93c5fd;
-  outline-offset: 1px;
-}
-
-.export-button {
-  padding: 8px 14px;
-  border: none;
-  border-radius: 10px;
-  font: inherit;
-  font-weight: 600;
-  color: #fff;
-  background: #16a34a;
-  cursor: pointer;
-}
-
-.export-button:hover {
-  background: #15803d;
-}
-
-.export-button:disabled {
-  opacity: 0.6;
-  cursor: progress;
-}
-
-.export-button:focus-visible {
-  outline: 3px solid #93c5fd;
-  outline-offset: 2px;
-}
-
-/* Файл проекта (FR-9) */
-.project-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 12px;
-  margin: -8px 0 16px;
-  padding: 0 14px;
-}
-
-.project-button {
-  padding: 6px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 10px;
-  font: inherit;
-  font-weight: 600;
-  color: var(--text);
-  background: var(--card);
-  cursor: pointer;
-}
-
-.project-button:hover {
-  background: #f3f4f6;
-}
-
-.project-button:disabled {
-  opacity: 0.6;
-  cursor: progress;
-}
-
-.project-button:focus-visible {
-  outline: 3px solid #93c5fd;
-  outline-offset: 2px;
-}
-
-.project-hint {
-  flex-basis: 100%;
-  margin: 0;
-  font-size: 13px;
-  color: var(--muted);
 }
 
 /* Разделы инструкции (FR-10) */
