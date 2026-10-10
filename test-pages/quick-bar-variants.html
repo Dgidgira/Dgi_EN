@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Панель быстрого доступа: варианты</title>
+  <!--
+    Прототип панели быстрого доступа для страницы просмотра записи (до переноса в extension/viewer).
+    Самодостаточный файл: без внешних шрифтов, библиотек и сетевых запросов; данные вымышленные.
+    Открыть: http://127.0.0.1:8000/quick-bar-variants.html (сервер из MC-2) или файлом в браузере.
+  -->
+  <style>
+    :root {
+      --text: #1f2937;
+      --muted: #6b7280;
+      --surface: #f9fafb;
+      --card: #fff;
+      --border: #e5e7eb;
+      --highlight: #dc2626;
+      --target: #2563eb;
+      --export: #16a34a;
+      --focus: #93c5fd;
+      --page: 960px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      max-width: var(--page);
+      margin: 0 auto;
+      padding: 24px 16px 120px;
+      font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+      color: var(--text);
+      background: var(--surface);
+    }
+
+    h1 { margin: 0 0 6px; font-size: 26px; }
+    .stats { margin: 0 0 16px; color: var(--muted); font-size: 14px; }
+
+    /* --- Макет верхних элементов управления (как на странице просмотра) --- */
+    .controls { display: grid; gap: 10px; margin: 0 0 24px; }
+    .bar {
+      display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 12px;
+      padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--card);
+    }
+    .bar label { display: flex; flex-direction: column; gap: 4px; flex: 1 1 260px; font-size: 13px; color: var(--muted); }
+    .bar input { padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px; font: inherit; color: var(--text); }
+    .top-button {
+      padding: 8px 14px; border: none; border-radius: 10px; font: inherit; font-weight: 600;
+      color: #fff; background: var(--export); cursor: pointer;
+    }
+    .top-button.light { color: var(--text); background: var(--card); box-shadow: inset 0 0 0 1px #d1d5db; }
+    .top-button.mask { background: #4b5563; }
+    .top-button.mask[aria-pressed="true"] { background: var(--target); }
+    .top-button:disabled { opacity: .6; cursor: progress; }
+    .status { color: var(--muted); font-size: 14px; }
+
+    /* --- Шаги (вымышленные) --- */
+    .steps { list-style: none; margin: 0; padding: 0; }
+    .step { margin: 0 0 24px; padding: 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
+    .step-head { margin: 0 0 12px; font-size: 17px; }
+    .step-head b { margin-right: 8px; }
+    .shot {
+      position: relative; aspect-ratio: 16 / 9; border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+      background:
+        linear-gradient(#f3f4f6 0 44px, transparent 44px),
+        repeating-linear-gradient(transparent 0 70px, #eef0f3 70px 72px),
+        #fff;
+    }
+    .shot::before, .shot::after {
+      content: ""; position: absolute; left: 6%; height: 34px; border: 1px solid #d1d5db; border-radius: 6px; background: #fff;
+    }
+    .shot::before { top: 22%; width: 42%; }
+    .shot::after { top: 42%; width: 58%; }
+    .frame { position: absolute; border: 3px solid var(--highlight); border-radius: 6px; }
+    /* Рамка точно вокруг первого или второго поля макета (поля — ::before и ::after у .shot) */
+    .frame { left: calc(6% - 6px); height: 46px; }
+    .frame.first { top: calc(22% - 6px); width: calc(42% + 12px); }
+    .frame.second { top: calc(42% - 6px); width: calc(58% + 12px); }
+
+    /* --- Панель быстрого доступа: общая часть --- */
+    .quick-bar {
+      position: fixed; z-index: 10;
+      /* Справа от страницы, в свободном поле; на узком окне — внизу (см. @media) */
+      top: 50%; right: max(16px, calc(50vw - var(--page) / 2 - 68px));
+      display: flex; flex-direction: column; align-items: stretch; gap: 2px;
+      padding: 6px;
+      opacity: 0; pointer-events: none;
+      transform: translate(10px, -50%);
+      transition: opacity .18s ease, transform .18s ease;
+    }
+    .quick-bar.visible { opacity: 1; pointer-events: auto; transform: translate(0, -50%); }
+
+    .qb-sep { flex: none; height: 1px; margin: 4px 6px; background: currentColor; opacity: .12; }
+
+    .qb-button {
+      position: relative; display: flex; align-items: center; justify-content: flex-start; gap: 10px;
+      width: 36px; height: 36px; padding: 0 9px; border: none; border-radius: 10px;
+      font: 500 13px/1 system-ui, -apple-system, "Segoe UI", sans-serif; white-space: nowrap;
+      color: inherit; background: none; cursor: pointer;
+      transition: background-color .12s, color .12s, width .18s ease;
+    }
+    .qb-button svg { flex: none; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .qb-button:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; }
+    .qb-button:disabled { opacity: .4; cursor: progress; }
+    .qb-label { display: none; }
+
+    /* Подсказка слева от кнопки (у нижней полосы — сверху) */
+    .qb-button::after {
+      content: attr(data-tip); position: absolute; right: calc(100% + 10px); top: 50%;
+      padding: 5px 8px; border-radius: 6px; font-size: 12px; color: #fff; background: #111827;
+      opacity: 0; pointer-events: none; transform: translate(4px, -50%); transition: opacity .12s, transform .12s;
+    }
+    .qb-button:hover::after, .qb-button:focus-visible::after { opacity: 1; transform: translate(0, -50%); }
+
+    /* Идёт выгрузка: вместо иконки — вращающееся кольцо */
+    .qb-button.busy svg { display: none; }
+    .qb-button.busy::before {
+      content: ""; width: 16px; height: 16px; margin: 0 1px; border: 2px solid currentColor; border-right-color: transparent;
+      border-radius: 50%; animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Сообщение о результате рядом с панелью */
+    .qb-toast {
+      position: fixed; z-index: 11; right: max(16px, calc(50vw - var(--page) / 2 - 68px)); bottom: 24px;
+      max-width: 320px; padding: 10px 14px; border-radius: 10px; font-size: 14px; color: #fff; background: #111827;
+      box-shadow: 0 8px 24px rgb(17 24 39 / .2);
+      opacity: 0; transform: translateY(8px); transition: opacity .18s, transform .18s; pointer-events: none;
+    }
+    .qb-toast.visible { opacity: 1; transform: none; }
+
+    /* A. Стекло: светлая полупрозрачная, иконки нейтральные, активный режим — синий */
+    [data-variant="a"] .quick-bar {
+      color: #374151; background: rgb(255 255 255 / .82); border: 1px solid rgb(17 24 39 / .08); border-radius: 14px;
+      box-shadow: 0 8px 28px rgb(17 24 39 / .12); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    }
+    [data-variant="a"] .qb-button:hover { background: #f3f4f6; color: #111827; }
+    [data-variant="a"] .qb-button[aria-pressed="true"] { color: var(--target); background: #dbeafe; }
+
+    /* B. Тёмная: контрастная, заметна на любых скриншотах */
+    [data-variant="b"] .quick-bar {
+      color: #d1d5db; background: #111827; border-radius: 14px; box-shadow: 0 10px 30px rgb(17 24 39 / .35);
+    }
+    [data-variant="b"] .qb-button:hover { color: #fff; background: #1f2937; }
+    [data-variant="b"] .qb-button[aria-pressed="true"] { color: #fff; background: var(--target); }
+    [data-variant="b"] .qb-button::after { color: #111827; background: #fff; box-shadow: 0 2px 8px rgb(17 24 39 / .2); }
+
+    /* C. С подписями: узкая, при наведении раскрывается с названиями действий */
+    [data-variant="c"] .quick-bar {
+      color: #374151; background: #fff; border: 1px solid var(--border); border-radius: 14px;
+      box-shadow: 0 6px 20px rgb(17 24 39 / .1);
+    }
+    [data-variant="c"] .qb-label { display: inline; opacity: 0; transition: opacity .12s; }
+    /* Свёрнутая кнопка обрезает подпись, чтобы невидимый текст не ловил нажатия за краем панели */
+    [data-variant="c"] .qb-button { overflow: hidden; }
+    [data-variant="c"] .qb-button::after { content: none; }
+    [data-variant="c"] .quick-bar:hover .qb-button,
+    [data-variant="c"] .quick-bar:focus-within .qb-button { width: 184px; }
+    [data-variant="c"] .quick-bar:hover .qb-label,
+    [data-variant="c"] .quick-bar:focus-within .qb-label { opacity: 1; }
+    [data-variant="c"] .qb-button:hover { background: #f3f4f6; }
+    [data-variant="c"] .qb-button[aria-pressed="true"] { color: var(--target); background: #dbeafe; }
+
+    /* D. Док снизу: горизонтальная полоса по центру внизу */
+    [data-variant="d"] .quick-bar {
+      top: auto; bottom: 20px; right: 50%; flex-direction: row;
+      color: #374151; background: rgb(255 255 255 / .86); border: 1px solid rgb(17 24 39 / .08); border-radius: 16px;
+      box-shadow: 0 10px 30px rgb(17 24 39 / .14); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      transform: translate(50%, 10px);
+    }
+    [data-variant="d"] .quick-bar.visible { transform: translate(50%, 0); }
+    [data-variant="d"] .qb-sep { width: 1px; height: auto; margin: 6px 4px; }
+    [data-variant="d"] .qb-button::after { right: auto; left: 50%; top: auto; bottom: calc(100% + 10px); transform: translate(-50%, 4px); }
+    [data-variant="d"] .qb-button:hover::after, [data-variant="d"] .qb-button:focus-visible::after { transform: translate(-50%, 0); }
+    [data-variant="d"] .qb-button:hover { background: #f3f4f6; color: #111827; }
+    [data-variant="d"] .qb-button[aria-pressed="true"] { color: var(--target); background: #dbeafe; }
+    [data-variant="d"] .qb-toast { right: 50%; bottom: 84px; transform: translate(50%, 8px); }
+    [data-variant="d"] .qb-toast.visible { transform: translate(50%, 0); }
+
+    /* E. Цветные группы: у каждой группы свой мягкий цвет — выгрузка, проект, скрытие */
+    [data-variant="e"] .quick-bar {
+      gap: 6px; padding: 8px; color: #374151; background: #fff; border: 1px solid var(--border); border-radius: 16px;
+      box-shadow: 0 6px 20px rgb(17 24 39 / .1);
+    }
+    [data-variant="e"] .qb-sep { display: none; }
+    [data-variant="e"] .qb-button { width: 34px; height: 34px; padding: 0 8px; }
+    [data-variant="e"] .qb-button[data-group="export"] { color: #15803d; background: #ecfdf5; }
+    [data-variant="e"] .qb-button[data-group="export"]:hover { background: #d1fae5; }
+    [data-variant="e"] .qb-button[data-group="project"] { color: #4338ca; background: #eef2ff; }
+    [data-variant="e"] .qb-button[data-group="project"]:hover { background: #e0e7ff; }
+    [data-variant="e"] .qb-button[data-group="mask"] { color: #b45309; background: #fffbeb; }
+    [data-variant="e"] .qb-button[data-group="mask"]:hover { background: #fef3c7; }
+    [data-variant="e"] .qb-button[data-group="mask"][aria-pressed="true"] { color: #fff; background: #d97706; }
+    [data-variant="e"] .qb-button[data-group="nav"] { color: #4b5563; background: #f3f4f6; }
+    [data-variant="e"] .qb-button[data-group="nav"]:hover { background: #e5e7eb; }
+
+    /* Узкое окно: справа места нет — любая вертикальная панель становится полосой снизу */
+    @media (max-width: 1100px) {
+      .quick-bar:not([data-variant="d"] *) {
+        top: auto; bottom: 16px; right: 50%; flex-direction: row; transform: translate(50%, 10px);
+      }
+      .quick-bar.visible:not([data-variant="d"] *) { transform: translate(50%, 0); }
+      .quick-bar .qb-sep { width: 1px; height: auto; margin: 6px 4px; }
+      [data-variant="c"] .quick-bar:hover .qb-button,
+      [data-variant="c"] .quick-bar:focus-within .qb-button { width: 36px; }
+      [data-variant="c"] .qb-label { display: none; }
+      [data-variant="c"] .qb-button::after { content: attr(data-tip); }
+      [data-variant="c"] .qb-button { overflow: visible; }
+      .qb-button::after { right: auto; left: 50%; top: auto; bottom: calc(100% + 10px); transform: translate(-50%, 4px); }
+      .qb-button:hover::after, .qb-button:focus-visible::after { transform: translate(-50%, 0); }
+      .qb-toast { right: 50%; bottom: 76px; transform: translate(50%, 8px); }
+      .qb-toast.visible { transform: translate(50%, 0); }
+      /* Переключатель прототипа уходит наверх, чтобы не закрывать нижнюю полосу */
+      .switcher { top: 16px; bottom: auto; }
+    }
+
+    /* --- Переключатель вариантов (только для прототипа) --- */
+    .switcher {
+      position: fixed; z-index: 20; left: 16px; bottom: 16px; display: flex; align-items: center; gap: 4px;
+      padding: 4px; border-radius: 12px; background: #111827; box-shadow: 0 8px 24px rgb(17 24 39 / .25);
+    }
+    .switcher span { padding: 0 8px 0 6px; font-size: 12px; color: #9ca3af; }
+    .switcher button {
+      min-width: 30px; height: 28px; padding: 0 8px; border: none; border-radius: 8px;
+      font: 600 13px system-ui, sans-serif; color: #d1d5db; background: none; cursor: pointer;
+    }
+    .switcher button:hover { color: #fff; background: #1f2937; }
+    .switcher button[aria-pressed="true"] { color: #111827; background: #fff; }
+    .switcher button:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; }
+    .variant-note {
+      margin: 0 0 24px; padding: 10px 14px; border-radius: 10px; font-size: 14px; color: #1e3a8a; background: #eff6ff;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .quick-bar, .qb-button, .qb-button::after, .qb-toast { transition: none; }
+      .qb-button.busy::before { animation-duration: 2.4s; }
+    }
+  </style>
+</head>
+<body data-variant="a">
+  <h1>Просмотр записи</h1>
+  <p class="stats">Описаний с подписью элемента: 12 из 12 · Отсеяно шагов: 3 · Скриншотов: 12</p>
+  <p class="variant-note" id="variant-note"></p>
+
+  <div class="controls" id="controls">
+    <div class="bar">
+      <label>Название инструкции<input type="text" value="Регистрация происшествия (тест)"></label>
+      <button type="button" class="top-button" id="top-html">Скачать HTML</button>
+      <button type="button" class="top-button" id="top-docx">Скачать Word</button>
+      <span class="status" id="top-status" role="status"></span>
+    </div>
+    <div class="bar">
+      <button type="button" class="top-button light" id="top-save">Сохранить проект</button>
+      <button type="button" class="top-button light">Открыть проект</button>
+    </div>
+    <div class="bar">
+      <button type="button" class="top-button mask" id="top-fields" aria-pressed="false">Скрыть поля</button>
+      <button type="button" class="top-button mask" id="top-areas" aria-pressed="false">Скрыть область</button>
+      <span class="status">Скрыто полей: 1 · Скрыто областей: 0</span>
+    </div>
+  </div>
+
+  <ol class="steps" id="steps"></ol>
+
+  <!-- Панель быстрого доступа: появляется, когда верхние элементы управления ушли за край экрана -->
+  <nav class="quick-bar" id="quick-bar" aria-label="Быстрый доступ">
+    <button type="button" class="qb-button" data-group="export" data-target="top-html" data-tip="Скачать HTML" aria-label="Скачать HTML">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 7-5 5 5 5"/><path d="m16 7 5 5-5 5"/><path d="m14 4-4 16"/></svg>
+      <span class="qb-label">Скачать HTML</span>
+    </button>
+    <button type="button" class="qb-button" data-group="export" data-target="top-docx" data-tip="Скачать Word" aria-label="Скачать Word">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="m8.5 12 1.2 5 1.8-4 1.8 4 1.2-5"/></svg>
+      <span class="qb-label">Скачать Word</span>
+    </button>
+    <span class="qb-sep" aria-hidden="true"></span>
+    <button type="button" class="qb-button" data-group="project" data-target="top-save" data-tip="Сохранить проект" aria-label="Сохранить проект">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-7H7v7"/><path d="M7 3v4h8"/></svg>
+      <span class="qb-label">Сохранить проект</span>
+    </button>
+    <span class="qb-sep" aria-hidden="true"></span>
+    <button type="button" class="qb-button" data-group="mask" data-target="top-fields" data-tip="Скрыть поля" aria-label="Скрыть поля" aria-pressed="false">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 3 18 18"/><path d="M10.6 5.1A10 10 0 0 1 12 5c5 0 9 4.5 10 7-.4 1-1.2 2.3-2.4 3.5"/><path d="M6.6 6.6C4.4 8 2.8 10.2 2 12c1 2.5 5 7 10 7 1.7 0 3.3-.5 4.6-1.3"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>
+      <span class="qb-label">Скрыть поля</span>
+    </button>
+    <button type="button" class="qb-button" data-group="mask" data-target="top-areas" data-tip="Скрыть область" aria-label="Скрыть область" aria-pressed="false">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="2.5" stroke-dasharray="3 2.6"/><path d="M8 10.5h8"/><path d="M8 13.5h5"/></svg>
+      <span class="qb-label">Скрыть область</span>
+    </button>
+    <span class="qb-sep" aria-hidden="true"></span>
+    <button type="button" class="qb-button" data-group="nav" data-action="top" data-tip="Наверх" aria-label="Наверх">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>
+      <span class="qb-label">Наверх</span>
+    </button>
+  </nav>
+  <div class="qb-toast" id="qb-toast" role="status"></div>
+
+  <div class="switcher" role="group" aria-label="Вариант панели">
+    <span>Вариант</span>
+    <button type="button" data-variant="a" aria-pressed="true">A</button>
+    <button type="button" data-variant="b" aria-pressed="false">B</button>
+    <button type="button" data-variant="c" aria-pressed="false">C</button>
+    <button type="button" data-variant="d" aria-pressed="false">D</button>
+    <button type="button" data-variant="e" aria-pressed="false">E</button>
+  </div>
+
+  <script>
+    const NOTES = {
+      a: "A. Стекло: светлая полупрозрачная панель справа от страницы, нейтральные иконки, включённый режим скрытия подсвечен синим. Подсказка — при наведении.",
+      b: "B. Тёмная: контрастная панель справа, хорошо заметна поверх светлых скриншотов.",
+      c: "C. С подписями: узкая панель справа, при наведении раскрывается с названиями действий — не нужно угадывать иконки.",
+      d: "D. Док снизу: горизонтальная полоса по центру внизу экрана, как в macOS.",
+      e: "E. Цветные группы: зелёный — выгрузка, синий — проект, жёлтый — скрытие данных, серый — навигация.",
+    };
+
+    // Вымышленные шаги для прокрутки
+    const texts = [
+      "В поле «Фамилия» введите «Тестов»", "В поле «Телефон заявителя» введите «***»", "В списке «Тип происшествия» выберите «Пожар»",
+      "Отметьте «Есть пострадавшие»", "Выберите вариант «Высокий»", "Нажмите кнопку «Сохранить»",
+      "Нажмите кнопку «Передать в службу»", "В меню «Действия» выберите «Печать»", "Перейдите по ссылке «Справка»",
+      "В поле «Описание» введите «Тестовое описание»", "Нажмите кнопку «Закрыть карточку»", "Нажмите «Выход»",
+    ];
+    const steps = document.getElementById("steps");
+    texts.forEach((text, i) => {
+      const step = document.createElement("li");
+      step.className = "step";
+      step.innerHTML = `<p class="step-head"><b>Шаг ${i + 1}</b>${text}</p>` +
+        `<div class="shot"><div class="frame ${i % 2 ? "second" : "first"}"></div></div>`;
+      steps.append(step);
+    });
+
+    // Панель видна, когда верхние элементы управления целиком ушли за край экрана
+    const bar = document.getElementById("quick-bar");
+    new IntersectionObserver(([entry]) => {
+      bar.classList.toggle("visible", !entry.isIntersecting);
+    }).observe(document.getElementById("controls"));
+
+    // Сообщение рядом с панелью
+    const toast = document.getElementById("qb-toast");
+    let toastTimer;
+    function showToast(text) {
+      toast.textContent = text;
+      toast.classList.add("visible");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove("visible"), 2600);
+    }
+
+    // Верхние кнопки (в расширении — настоящие): выгрузка имитируется, режимы переключаются
+    const topStatus = document.getElementById("top-status");
+    function fakeExport(button, done) {
+      const exportButtons = ["top-html", "top-docx", "top-save"].map((id) => document.getElementById(id));
+      exportButtons.forEach((b) => { b.disabled = true; });
+      topStatus.textContent = "Готовим скриншоты: 3 из 12…";
+      syncBar();
+      bar.querySelector(`[data-target="${button.id}"]`).classList.add("busy");
+      setTimeout(() => {
+        exportButtons.forEach((b) => { b.disabled = false; });
+        bar.querySelectorAll(".busy").forEach((b) => b.classList.remove("busy"));
+        topStatus.textContent = done;
+        syncBar();
+        if (bar.classList.contains("visible")) showToast(done);
+      }, 1600);
+    }
+    document.getElementById("top-html").addEventListener("click", (e) => fakeExport(e.currentTarget, "Готово: файл сохранён в папку загрузок"));
+    document.getElementById("top-docx").addEventListener("click", (e) => fakeExport(e.currentTarget, "Готово: файл сохранён в папку загрузок"));
+    document.getElementById("top-save").addEventListener("click", (e) => fakeExport(e.currentTarget, "Проект сохранён в папку загрузок"));
+    for (const id of ["top-fields", "top-areas"]) {
+      document.getElementById(id).addEventListener("click", (e) => {
+        const button = e.currentTarget;
+        const other = document.getElementById(id === "top-fields" ? "top-areas" : "top-fields");
+        const on = button.getAttribute("aria-pressed") !== "true";
+        button.setAttribute("aria-pressed", String(on));
+        if (on) other.setAttribute("aria-pressed", "false");
+        syncBar();
+        if (bar.classList.contains("visible")) showToast(on ? `Режим «${button.textContent}» включён` : "Режим скрытия выключен");
+      });
+    }
+
+    // Кнопки панели нажимают верхние кнопки и повторяют их состояние
+    function syncBar() {
+      for (const button of bar.querySelectorAll("[data-target]")) {
+        const target = document.getElementById(button.dataset.target);
+        button.disabled = target.disabled;
+        if (target.hasAttribute("aria-pressed")) button.setAttribute("aria-pressed", target.getAttribute("aria-pressed"));
+      }
+    }
+    bar.addEventListener("click", (e) => {
+      const button = e.target.closest(".qb-button");
+      if (!button) return;
+      if (button.dataset.action === "top") window.scrollTo({ top: 0, behavior: "smooth" });
+      else document.getElementById(button.dataset.target).click();
+    });
+
+    // Переключатель вариантов
+    const note = document.getElementById("variant-note");
+    function setVariant(variant) {
+      document.body.dataset.variant = variant;
+      note.textContent = NOTES[variant] + " Прокрутите страницу вниз, чтобы появилась панель; сузьте окно, чтобы увидеть её внизу.";
+      document.querySelectorAll(".switcher button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.variant === variant)));
+    }
+    document.querySelector(".switcher").addEventListener("click", (e) => {
+      const button = e.target.closest("button[data-variant]");
+      if (button) setVariant(button.dataset.variant);
+    });
+    setVariant("a");
+  </script>
+</body>
+</html>
