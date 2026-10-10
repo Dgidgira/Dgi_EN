@@ -95,12 +95,12 @@
 
     .qb-button {
       position: relative; display: flex; align-items: center; justify-content: flex-start; gap: 10px;
-      width: 36px; height: 36px; padding: 0 9px; border: none; border-radius: 10px;
+      width: 39px; height: 39px; padding: 0 9.5px; border: none; border-radius: 11px;
       font: 500 13px/1 system-ui, -apple-system, "Segoe UI", sans-serif; white-space: nowrap;
       color: inherit; background: none; cursor: pointer;
       transition: background-color .12s, color .12s, width .18s ease;
     }
-    .qb-button svg { flex: none; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .qb-button svg { flex: none; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
     .qb-button:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; }
     .qb-button:disabled { opacity: .4; cursor: progress; }
     .qb-label { display: none; }
@@ -116,7 +116,7 @@
     /* Идёт выгрузка: вместо иконки — вращающееся кольцо */
     .qb-button.busy svg { display: none; }
     .qb-button.busy::before {
-      content: ""; width: 16px; height: 16px; margin: 0 1px; border: 2px solid currentColor; border-right-color: transparent;
+      content: ""; width: 18px; height: 18px; margin: 0 1px; border: 2px solid currentColor; border-right-color: transparent;
       border-radius: 50%; animation: spin .8s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
@@ -156,7 +156,7 @@
     [data-variant="c"] .qb-button { overflow: hidden; }
     [data-variant="c"] .qb-button::after { content: none; }
     [data-variant="c"] .quick-bar:hover .qb-button,
-    [data-variant="c"] .quick-bar:focus-within .qb-button { width: 184px; }
+    [data-variant="c"] .quick-bar:focus-within .qb-button { width: 190px; }
     [data-variant="c"] .quick-bar:hover .qb-label,
     [data-variant="c"] .quick-bar:focus-within .qb-label { opacity: 1; }
     [data-variant="c"] .qb-button:hover { background: #f3f4f6; }
@@ -175,7 +175,7 @@
     [data-variant="d"] .qb-button:hover::after, [data-variant="d"] .qb-button:focus-visible::after { transform: translate(-50%, 0); }
     [data-variant="d"] .qb-button:hover { background: #f3f4f6; color: #111827; }
     [data-variant="d"] .qb-button[aria-pressed="true"] { color: var(--target); background: #dbeafe; }
-    [data-variant="d"] .qb-toast { right: 50%; bottom: 84px; transform: translate(50%, 8px); }
+    [data-variant="d"] .qb-toast { right: 50%; bottom: 88px; transform: translate(50%, 8px); }
     [data-variant="d"] .qb-toast.visible { transform: translate(50%, 0); }
 
     /* E. Цветные группы: у каждой группы свой мягкий цвет — выгрузка, проект, скрытие */
@@ -184,7 +184,7 @@
       box-shadow: 0 6px 20px rgb(17 24 39 / .1);
     }
     [data-variant="e"] .qb-sep { display: none; }
-    [data-variant="e"] .qb-button { width: 34px; height: 34px; padding: 0 8px; }
+    [data-variant="e"] .qb-button { width: 37px; height: 37px; padding: 0 8.5px; }
     [data-variant="e"] .qb-button[data-group="export"] { color: #15803d; background: #ecfdf5; }
     [data-variant="e"] .qb-button[data-group="export"]:hover { background: #d1fae5; }
     [data-variant="e"] .qb-button[data-group="project"] { color: #4338ca; background: #eef2ff; }
@@ -203,13 +203,13 @@
       .quick-bar.visible:not([data-variant="d"] *) { transform: translate(50%, 0); }
       .quick-bar .qb-sep { width: 1px; height: auto; margin: 6px 4px; }
       [data-variant="c"] .quick-bar:hover .qb-button,
-      [data-variant="c"] .quick-bar:focus-within .qb-button { width: 36px; }
+      [data-variant="c"] .quick-bar:focus-within .qb-button { width: 39px; }
       [data-variant="c"] .qb-label { display: none; }
       [data-variant="c"] .qb-button::after { content: attr(data-tip); }
       [data-variant="c"] .qb-button { overflow: visible; }
       .qb-button::after { right: auto; left: 50%; top: auto; bottom: calc(100% + 10px); transform: translate(-50%, 4px); }
       .qb-button:hover::after, .qb-button:focus-visible::after { transform: translate(-50%, 0); }
-      .qb-toast { right: 50%; bottom: 76px; transform: translate(50%, 8px); }
+      .qb-toast { right: 50%; bottom: 80px; transform: translate(50%, 8px); }
       .qb-toast.visible { transform: translate(50%, 0); }
       /* Переключатель прототипа уходит наверх, чтобы не закрывать нижнюю полосу */
       .switcher { top: 16px; bottom: auto; }
