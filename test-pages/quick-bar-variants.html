@@ -211,9 +211,103 @@
       .qb-button:hover::after, .qb-button:focus-visible::after { transform: translate(-50%, 0); }
       .qb-toast { right: 50%; bottom: 80px; transform: translate(50%, 8px); }
       .qb-toast.visible { transform: translate(50%, 0); }
-      /* Переключатель прототипа уходит наверх, чтобы не закрывать нижнюю полосу */
+      /* Переключатель прототипа уходит наверх, чтобы не закрывать нижнюю полосу; у лент — над строкой состояния */
       .switcher { top: 16px; bottom: auto; }
+      [data-variant="f"] .switcher, [data-variant="g"] .switcher { top: auto; bottom: 40px; }
     }
+
+
+    /* --- F, G. Лента в стиле Microsoft Office: все элементы управления сразу в панели вверху --- */
+    .ribbon, .statusbar, .mode-hint { display: none; }
+    [data-variant="f"] .ribbon.classic, [data-variant="g"] .ribbon.simple { display: flex; }
+    [data-variant="f"] .statusbar, [data-variant="g"] .statusbar { display: flex; }
+    [data-variant="f"] :is(#controls, .stats, h1, .quick-bar),
+    [data-variant="g"] :is(#controls, .stats, h1, .quick-bar) { display: none; }
+    [data-variant="f"] { --ribbon-h: 128px; padding-top: calc(var(--ribbon-h) + 20px); }
+    [data-variant="f"].ribbon-collapsed { --ribbon-h: 40px; }
+    [data-variant="g"] { --ribbon-h: 50px; padding-top: calc(var(--ribbon-h) + 20px); }
+    /* Пока видна подсказка режима скрытия, содержимое сдвигается под неё, а не прячется */
+    [data-variant="f"].hint-shown, [data-variant="g"].hint-shown { padding-top: calc(var(--ribbon-h) + 60px); }
+
+    .ribbon {
+      position: fixed; z-index: 15; top: 0; left: 0; right: 0;
+      background: #fff; border-bottom: 1px solid var(--border); box-shadow: 0 2px 10px rgb(17 24 39 / .06);
+      font: 13px/1.2 system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    .rb-button {
+      position: relative; display: inline-flex; align-items: center; gap: 7px; border: none; border-radius: 8px;
+      font: inherit; color: var(--text); background: none; cursor: pointer; white-space: nowrap;
+      transition: background-color .12s, color .12s;
+    }
+    .rb-button svg { flex: none; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+    .rb-button:hover { background: #f3f4f6; }
+    .rb-button:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; }
+    .rb-button:disabled { opacity: .45; cursor: progress; }
+    .rb-button[aria-pressed="true"] { color: var(--target); background: #dbeafe; }
+    .rb-button.export svg { color: var(--export); }
+    .rb-button.busy svg { display: none; }
+    .rb-button.busy::before {
+      content: ""; flex: none; width: 18px; height: 18px; margin: 1px; border: 2px solid var(--export); border-right-color: transparent;
+      border-radius: 50%; animation: spin .8s linear infinite;
+    }
+    .rb-doc-title {
+      min-width: 0; padding: 5px 8px; border: 1px solid transparent; border-radius: 6px;
+      font: 600 14px system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--text); background: none;
+    }
+    .rb-doc-title:hover { border-color: var(--border); }
+    .rb-doc-title:focus-visible { border-color: #d1d5db; outline: 3px solid var(--focus); outline-offset: 0; background: #fff; }
+    .rb-meta { color: var(--muted); font-size: 12px; white-space: nowrap; }
+
+    /* F. Классическая лента: строка с названием, под ней группы с крупными кнопками и подписями групп */
+    .ribbon.classic { flex-direction: column; }
+    .rb-titlebar {
+      display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 16px;
+      background: #f8fafc; border-bottom: 1px solid var(--border);
+    }
+    .rb-app { font-weight: 600; color: var(--muted); white-space: nowrap; }
+    .rb-titlebar .rb-doc-title { flex: 0 1 420px; margin: 0 auto; text-align: center; }
+    .rb-body { display: flex; align-items: stretch; height: 88px; padding: 4px 8px 0; overflow-x: auto; }
+    .ribbon-collapsed .rb-body { display: none; }
+    .rb-group { display: flex; flex-direction: column; padding: 0 8px; border-right: 1px solid var(--border); }
+    .rb-items { display: flex; align-items: flex-start; gap: 2px; flex: 1; }
+    .rb-caption { padding: 2px 0 5px; font-size: 11px; color: var(--muted); text-align: center; white-space: nowrap; }
+    .rb-button.large { flex-direction: column; justify-content: center; gap: 4px; width: 76px; height: 62px; padding: 4px; white-space: normal; text-align: center; line-height: 1.15; }
+    .rb-button.large svg { width: 24px; height: 24px; }
+    .rb-button.large.busy::before { width: 22px; height: 22px; }
+    .rb-counters { display: flex; flex-direction: column; justify-content: center; gap: 4px; height: 62px; padding: 0 6px 0 8px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+    .rb-counters b { color: var(--text); }
+    .rb-collapse { align-self: flex-end; margin: 0 0 6px auto; padding: 4px; color: var(--muted); }
+    .ribbon-collapsed .rb-collapse svg { transform: rotate(180deg); }
+    .rb-titlebar .rb-collapse { display: none; margin: 0; align-self: center; }
+    .ribbon-collapsed .rb-titlebar .rb-collapse { display: inline-flex; }
+
+    /* G. Упрощённая лента: одна строка — название, команды с подписями, счётчики */
+    .ribbon.simple { align-items: center; gap: 4px; height: 50px; padding: 0 12px; overflow-x: auto; }
+    .ribbon.simple .rb-doc-title { flex: 0 1 260px; }
+    .ribbon.simple .rb-button { height: 34px; padding: 0 10px; }
+    .rb-sep { flex: none; width: 1px; height: 22px; margin: 0 6px; background: var(--border); }
+    .rb-spacer { flex: 1; }
+    @media (max-width: 1100px) {
+      .ribbon.simple .rb-label { display: none; }
+      .ribbon.simple .rb-button { padding: 0 8px; }
+    }
+
+    /* Подсказка режима скрытия — сразу под лентой */
+    .mode-hint {
+      position: fixed; z-index: 14; top: var(--ribbon-h); left: 0; right: 0; padding: 8px 16px;
+      font-size: 14px; color: #1e3a8a; background: #eff6ff; border-bottom: 1px solid #bfdbfe; text-align: center;
+    }
+    [data-variant="f"] .mode-hint.visible, [data-variant="g"] .mode-hint.visible { display: block; }
+
+    /* Строка состояния внизу, как в Word */
+    .statusbar {
+      position: fixed; z-index: 15; left: 0; right: 0; bottom: 0; align-items: center; gap: 16px; height: 28px; padding: 0 16px;
+      font-size: 12px; color: var(--muted); background: #f8fafc; border-top: 1px solid var(--border); white-space: nowrap; overflow: hidden;
+    }
+    .statusbar .rb-spacer { flex: 1; }
+    [data-variant="f"] .switcher, [data-variant="g"] .switcher { bottom: 40px; }
+    [data-variant="f"] .qb-toast, [data-variant="g"] .qb-toast { right: 16px; bottom: 40px; transform: translateY(8px); }
+    [data-variant="f"] .qb-toast.visible, [data-variant="g"] .qb-toast.visible { transform: none; }
 
     /* --- Переключатель вариантов (только для прототипа) --- */
     .switcher {
@@ -239,6 +333,58 @@
   </style>
 </head>
 <body data-variant="a">
+  <!-- F. Классическая лента: все элементы управления сразу видны, как в Word -->
+  <header class="ribbon classic" aria-label="Лента">
+    <div class="rb-titlebar">
+      <span class="rb-app">Запись инструкций</span>
+      <input class="rb-doc-title" data-sync="title" type="text" value="Регистрация происшествия (тест)" aria-label="Название инструкции" title="Название инструкции">
+      <span class="rb-meta">12 шагов · 12 скриншотов</span>
+      <button type="button" class="rb-button rb-collapse" data-action="collapse" title="Развернуть ленту" aria-label="Развернуть ленту"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg></button>
+    </div>
+    <div class="rb-body">
+      <div class="rb-group">
+        <div class="rb-items">
+          <button type="button" class="rb-button large export" data-target="top-html" title="Скачать HTML"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 7-5 5 5 5"/><path d="m16 7 5 5-5 5"/><path d="m14 4-4 16"/></svg><span class="rb-label">Скачать HTML</span></button>
+          <button type="button" class="rb-button large export" data-target="top-docx" title="Скачать Word"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="m8.5 12 1.2 5 1.8-4 1.8 4 1.2-5"/></svg><span class="rb-label">Скачать Word</span></button>
+        </div>
+        <div class="rb-caption">Выгрузка</div>
+      </div>
+      <div class="rb-group">
+        <div class="rb-items">
+          <button type="button" class="rb-button large" data-target="top-save" title="Сохранить проект"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-7H7v7"/><path d="M7 3v4h8"/></svg><span class="rb-label">Сохранить проект</span></button>
+          <button type="button" class="rb-button large" data-target="top-open" title="Открыть проект"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9V6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v1"/><path d="M3 9h18l-1.6 9.2a1 1 0 0 1-1 .8H5.6a1 1 0 0 1-1-.8z"/></svg><span class="rb-label">Открыть проект</span></button>
+        </div>
+        <div class="rb-caption">Проект</div>
+      </div>
+      <div class="rb-group">
+        <div class="rb-items">
+          <button type="button" class="rb-button large" data-target="top-fields" title="Скрыть поля" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 3 18 18"/><path d="M10.6 5.1A10 10 0 0 1 12 5c5 0 9 4.5 10 7-.4 1-1.2 2.3-2.4 3.5"/><path d="M6.6 6.6C4.4 8 2.8 10.2 2 12c1 2.5 5 7 10 7 1.7 0 3.3-.5 4.6-1.3"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg><span class="rb-label">Скрыть поля</span></button>
+          <button type="button" class="rb-button large" data-target="top-areas" title="Скрыть область" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="2.5" stroke-dasharray="3 2.6"/><path d="M8 10.5h8"/><path d="M8 13.5h5"/></svg><span class="rb-label">Скрыть область</span></button>
+          <div class="rb-counters"><span>Полей: <b>1</b></span><span>Областей: <b>0</b></span></div>
+        </div>
+        <div class="rb-caption">Скрытие данных</div>
+      </div>
+      <button type="button" class="rb-button rb-collapse" data-action="collapse" title="Свернуть ленту" aria-label="Свернуть ленту"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg></button>
+    </div>
+  </header>
+
+  <!-- G. Упрощённая лента: одна строка -->
+  <header class="ribbon simple" aria-label="Лента">
+    <input class="rb-doc-title" data-sync="title" type="text" value="Регистрация происшествия (тест)" aria-label="Название инструкции" title="Название инструкции">
+    <span class="rb-sep" aria-hidden="true"></span>
+    <button type="button" class="rb-button export" data-target="top-html" title="HTML"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 7-5 5 5 5"/><path d="m16 7 5 5-5 5"/><path d="m14 4-4 16"/></svg><span class="rb-label">HTML</span></button>
+    <button type="button" class="rb-button export" data-target="top-docx" title="Word"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="m8.5 12 1.2 5 1.8-4 1.8 4 1.2-5"/></svg><span class="rb-label">Word</span></button>
+    <span class="rb-sep" aria-hidden="true"></span>
+    <button type="button" class="rb-button " data-target="top-save" title="Сохранить"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-7H7v7"/><path d="M7 3v4h8"/></svg><span class="rb-label">Сохранить</span></button>
+    <button type="button" class="rb-button " data-target="top-open" title="Открыть"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9V6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v1"/><path d="M3 9h18l-1.6 9.2a1 1 0 0 1-1 .8H5.6a1 1 0 0 1-1-.8z"/></svg><span class="rb-label">Открыть</span></button>
+    <span class="rb-sep" aria-hidden="true"></span>
+    <button type="button" class="rb-button " data-target="top-fields" title="Скрыть поля" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 3 18 18"/><path d="M10.6 5.1A10 10 0 0 1 12 5c5 0 9 4.5 10 7-.4 1-1.2 2.3-2.4 3.5"/><path d="M6.6 6.6C4.4 8 2.8 10.2 2 12c1 2.5 5 7 10 7 1.7 0 3.3-.5 4.6-1.3"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg><span class="rb-label">Скрыть поля</span></button>
+    <button type="button" class="rb-button " data-target="top-areas" title="Скрыть область" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="2.5" stroke-dasharray="3 2.6"/><path d="M8 10.5h8"/><path d="M8 13.5h5"/></svg><span class="rb-label">Скрыть область</span></button>
+    <span class="rb-spacer"></span>
+    <span class="rb-meta">Скрыто полей: 1 · областей: 0</span>
+  </header>
+  <p class="mode-hint" id="mode-hint" role="status"></p>
+
   <h1>Просмотр записи</h1>
   <p class="stats">Описаний с подписью элемента: 12 из 12 · Отсеяно шагов: 3 · Скриншотов: 12</p>
   <p class="variant-note" id="variant-note"></p>
@@ -252,7 +398,7 @@
     </div>
     <div class="bar">
       <button type="button" class="top-button light" id="top-save">Сохранить проект</button>
-      <button type="button" class="top-button light">Открыть проект</button>
+      <button type="button" class="top-button light" id="top-open">Открыть проект</button>
     </div>
     <div class="bar">
       <button type="button" class="top-button mask" id="top-fields" aria-pressed="false">Скрыть поля</button>
@@ -294,6 +440,11 @@
     </button>
   </nav>
   <div class="qb-toast" id="qb-toast" role="status"></div>
+  <footer class="statusbar">
+    <span>Шагов: 12</span><span>Скриншотов: 12</span><span>Отсеяно: 3</span>
+    <span class="rb-spacer"></span>
+    <span id="status-export">Готово к выгрузке</span>
+  </footer>
 
   <div class="switcher" role="group" aria-label="Вариант панели">
     <span>Вариант</span>
@@ -302,6 +453,8 @@
     <button type="button" data-variant="c" aria-pressed="false">C</button>
     <button type="button" data-variant="d" aria-pressed="false">D</button>
     <button type="button" data-variant="e" aria-pressed="false">E</button>
+    <button type="button" data-variant="f" aria-pressed="false">F</button>
+    <button type="button" data-variant="g" aria-pressed="false">G</button>
   </div>
 
   <script>
@@ -311,6 +464,8 @@
       c: "C. С подписями: узкая панель справа, при наведении раскрывается с названиями действий — не нужно угадывать иконки.",
       d: "D. Док снизу: горизонтальная полоса по центру внизу экрана, как в macOS.",
       e: "E. Цветные группы: зелёный — выгрузка, синий — проект, жёлтый — скрытие данных, серый — навигация.",
+      f: "F. Лента, как в Word: все элементы управления сразу в панели вверху, по группам «Выгрузка», «Проект», «Скрытие данных»; название инструкции — в строке заголовка. Ленту можно свернуть (стрелка справа). Внизу строка состояния.",
+      g: "G. Упрощённая лента, как в Office 365: одна строка с названием и командами. На узком окне остаются только иконки (подсказка при наведении). Внизу строка состояния.",
     };
 
     // Вымышленные шаги для прокрутки
@@ -347,23 +502,29 @@
 
     // Верхние кнопки (в расширении — настоящие): выгрузка имитируется, режимы переключаются
     const topStatus = document.getElementById("top-status");
+    const statusExport = document.getElementById("status-export");
+    const modeHint = document.getElementById("mode-hint");
+    const isRibbon = () => ["f", "g"].includes(document.body.dataset.variant);
     function fakeExport(button, done) {
       const exportButtons = ["top-html", "top-docx", "top-save"].map((id) => document.getElementById(id));
       exportButtons.forEach((b) => { b.disabled = true; });
       topStatus.textContent = "Готовим скриншоты: 3 из 12…";
+      statusExport.textContent = "Готовим скриншоты: 3 из 12…";
       syncBar();
-      bar.querySelector(`[data-target="${button.id}"]`).classList.add("busy");
+      document.querySelectorAll(`[data-target="${button.id}"]`).forEach((b) => b.classList.add("busy"));
       setTimeout(() => {
         exportButtons.forEach((b) => { b.disabled = false; });
-        bar.querySelectorAll(".busy").forEach((b) => b.classList.remove("busy"));
+        document.querySelectorAll(".busy").forEach((b) => b.classList.remove("busy"));
         topStatus.textContent = done;
+        statusExport.textContent = done;
         syncBar();
-        if (bar.classList.contains("visible")) showToast(done);
+        if (bar.classList.contains("visible") || isRibbon()) showToast(done);
       }, 1600);
     }
     document.getElementById("top-html").addEventListener("click", (e) => fakeExport(e.currentTarget, "Готово: файл сохранён в папку загрузок"));
     document.getElementById("top-docx").addEventListener("click", (e) => fakeExport(e.currentTarget, "Готово: файл сохранён в папку загрузок"));
     document.getElementById("top-save").addEventListener("click", (e) => fakeExport(e.currentTarget, "Проект сохранён в папку загрузок"));
+    document.getElementById("top-open").addEventListener("click", () => showToast("Здесь откроется окно выбора файла проекта (в прототипе не открывается)"));
     for (const id of ["top-fields", "top-areas"]) {
       document.getElementById(id).addEventListener("click", (e) => {
         const button = e.currentTarget;
@@ -372,13 +533,19 @@
         button.setAttribute("aria-pressed", String(on));
         if (on) other.setAttribute("aria-pressed", "false");
         syncBar();
+        modeHint.textContent = id === "top-fields"
+          ? "Нажмите на поле на скриншоте — оно скроется на всех скриншотах"
+          : "Выделите мышью область на скриншоте — она будет размыта";
+        const hintShown = document.querySelector('#controls [aria-pressed="true"]') !== null;
+        modeHint.classList.toggle("visible", hintShown);
+        document.body.classList.toggle("hint-shown", hintShown);
         if (bar.classList.contains("visible")) showToast(on ? `Режим «${button.textContent}» включён` : "Режим скрытия выключен");
       });
     }
 
-    // Кнопки панели нажимают верхние кнопки и повторяют их состояние
+    // Кнопки панели и ленты нажимают верхние кнопки и повторяют их состояние
     function syncBar() {
-      for (const button of bar.querySelectorAll("[data-target]")) {
+      for (const button of document.querySelectorAll(".qb-button[data-target], .rb-button[data-target]")) {
         const target = document.getElementById(button.dataset.target);
         button.disabled = target.disabled;
         if (target.hasAttribute("aria-pressed")) button.setAttribute("aria-pressed", target.getAttribute("aria-pressed"));
@@ -391,11 +558,28 @@
       else document.getElementById(button.dataset.target).click();
     });
 
+    // Лента: команды нажимают верхние кнопки, стрелка сворачивает и разворачивает ленту
+    for (const ribbon of document.querySelectorAll(".ribbon")) {
+      ribbon.addEventListener("click", (e) => {
+        const button = e.target.closest(".rb-button");
+        if (!button) return;
+        if (button.dataset.action === "collapse") document.body.classList.toggle("ribbon-collapsed");
+        else document.getElementById(button.dataset.target).click();
+      });
+    }
+    // Название инструкции одно на всех: верхнее поле и поля в лентах
+    const titleInputs = [document.querySelector("#controls input"), ...document.querySelectorAll('[data-sync="title"]')];
+    for (const input of titleInputs) {
+      input.addEventListener("input", () => titleInputs.forEach((other) => { if (other !== input) other.value = input.value; }));
+    }
+
     // Переключатель вариантов
     const note = document.getElementById("variant-note");
     function setVariant(variant) {
       document.body.dataset.variant = variant;
-      note.textContent = NOTES[variant] + " Прокрутите страницу вниз, чтобы появилась панель; сузьте окно, чтобы увидеть её внизу.";
+      note.textContent = NOTES[variant] + (["f", "g"].includes(variant)
+        ? " Лента закреплена вверху и видна при любой прокрутке."
+        : " Прокрутите страницу вниз, чтобы появилась панель; сузьте окно, чтобы увидеть её внизу.");
       document.querySelectorAll(".switcher button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.variant === variant)));
     }
     document.querySelector(".switcher").addEventListener("click", (e) => {
