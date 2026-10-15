@@ -443,6 +443,12 @@
   "cropReset": {
     "message": "Сбросить"
   },
+  "cropAuto": {
+    "message": "Авто"
+  },
+  "cropAutoNothing": {
+    "message": "Пустых полей по краям не найдено: кадр не изменён."
+  },
   "cropCancel": {
     "message": "Отмена"
   },
@@ -548,6 +554,56 @@
   "ribbonOpen": {
     "message": "Открыть",
     "description": "Короткая подпись кнопки «Открыть проект» на ленте"
+  },
+  "ribbonAutoCrop": {
+    "message": "Убрать поля",
+    "description": "Короткая подпись кнопки автокадра на ленте"
+  },
+  "autoCropTip": {
+    "message": "Убрать пустые поля по краям скриншотов. Скриншоты с кадром не меняются; кадр можно поправить или сбросить кнопкой «Изменить кадр»"
+  },
+  "autoCropDone": {
+    "message": "Пустые поля убраны: $DONE$ из $TOTAL$ скриншотов",
+    "placeholders": {
+      "done": {
+        "content": "$1",
+        "example": "7"
+      },
+      "total": {
+        "content": "$2",
+        "example": "12"
+      }
+    }
+  },
+  "autoCropKept": {
+    "message": "уже с кадром: $COUNT$",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  },
+  "autoCropNothing": {
+    "message": "без пустых полей: $COUNT$",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "autoCropNoShots": {
+    "message": "Нет скриншотов"
+  },
+  "autoCropFailed": {
+    "message": "Не удалось убрать пустые поля: $ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1",
+        "example": "ошибка"
+      }
+    }
   },
   "exportDefaultTitle": {
     "message": "Инструкция"

@@ -3,7 +3,8 @@
 // шаблонное описание (FR-3, shared/describe.js). Отмеченные автором поля размываются на всех
 // скриншотах и скрываются в описаниях; произвольные области размываются на своём скриншоте
 // (FR-6, shared/mask.js). Соседние шаги можно объединить под одним скриншотом (FR-7, shared/groups.js),
-// скриншот можно кадрировать (FR-7, shared/crop.js). Шаги делятся на разделы, созданные во время записи;
+// скриншот можно кадрировать вручную или автоматически убрать пустые поля по краям
+// (FR-7, shared/crop.js, shared/autocrop.js). Шаги делятся на разделы, созданные во время записи;
 // название раздела можно исправить, раздел — удалить или начать с любого шага (FR-10, shared/sections.js).
 // К шагам можно написать комментарий для читателя, скриншоту — дать название и текст (FR-11, shared/comments.js).
 
@@ -12,6 +13,8 @@ const t = (key, substitutions) => chrome.i18n.getMessage(key, substitutions);
 const SHOT_PREFIX = "shot:";
 // Запас вокруг элемента, чтобы рамка не перекрывала его край, в CSS-пикселях страницы
 const HIGHLIGHT_PADDING = 4;
+// Ширина уменьшенной копии снимка для поиска пустых полей: точности хватает, считается быстро
+const AUTOCROP_SAMPLE_WIDTH = 400;
 // Запас размытия вокруг поля: захватываем рамку поля, чтобы край текста не выглядывал
 const MASK_PADDING = 1;
 
@@ -24,6 +27,8 @@ const fieldModeEl = document.getElementById("mask-mode");
 const areaModeEl = document.getElementById("area-mode");
 const maskCountEl = document.getElementById("mask-count");
 const maskHintEl = document.getElementById("mask-hint");
+const autoCropEl = document.getElementById("autocrop");
+const toolStatusEl = document.getElementById("tool-status");
 
 // Отмеченные поля (ключ "maskedFields") и области (ключ "maskedAreas") хранятся в chrome.storage.local.
 // Режим работы — только на этой странице: null, "fields" (скрытие полей) или "areas" (выделение областей).
@@ -202,10 +207,70 @@ const CROP_RATIOS = [
   ["crop16x9", 16 / 9],
 ];
 
+// Автокадр снимка: пустые поля по краям убраны, рамки шагов (frames) остаются в кадре; null — убирать нечего
+async function computeAutoCrop(shotStep, dataUrl, frames) {
+  const img = new Image();
+  img.src = dataUrl;
+  await img.decode();
+  const scale = Math.min(1, AUTOCROP_SAMPLE_WIDTH / img.naturalWidth);
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+  canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  return autoCrop(ctx.getImageData(0, 0, canvas.width, canvas.height), framesToKeepRects(frames, shotStep.viewport));
+}
+
+// «Убрать поля» на ленте: автокадр всем скриншотам, у которых ещё нет кадра (ручные кадры не трогаем)
+async function autoCropAll() {
+  const shots = current.groups.filter((group) => current.shotOf(group.shotStep));
+  if (!shots.length) {
+    toolStatusEl.textContent = t("autoCropNoShots");
+    return;
+  }
+  autoCropEl.disabled = true;
+  autoCropEl.classList.add("busy");
+  try {
+    const { crops: stored = {} } = await chrome.storage.local.get("crops");
+    const next = { ...stored };
+    let done = 0;
+    let kept = 0;
+    let nothing = 0;
+    for (const group of shots) {
+      if (stored[group.shotStep.id]) {
+        kept += 1;
+        continue;
+      }
+      const crop = await computeAutoCrop(group.shotStep, current.shotOf(group.shotStep), groupLayers(group).frames);
+      if (crop) {
+        next[group.shotStep.id] = crop;
+        done += 1;
+      } else {
+        nothing += 1;
+      }
+    }
+    if (done) await chrome.storage.local.set({ crops: next });
+    const details = [];
+    if (kept) details.push(t("autoCropKept", [String(kept)]));
+    if (nothing) details.push(t("autoCropNothing", [String(nothing)]));
+    toolStatusEl.textContent = [t("autoCropDone", [String(done), String(shots.length)]), ...details].join(" · ");
+  } catch (error) {
+    console.error("Не удалось убрать пустые поля", error);
+    toolStatusEl.textContent = t("autoCropFailed", [String(error?.message || error)]);
+  } finally {
+    autoCropEl.classList.remove("busy");
+    autoCropEl.disabled = false;
+  }
+}
+
+setRibbonLabel(autoCropEl, t("ribbonAutoCrop"), t("autoCropTip"));
+autoCropEl.addEventListener("click", autoCropAll);
+
 function openCropEditor(shotStep, dataUrl, frames, areas) {
   const dialog = el("dialog", "crop-dialog");
   dialog.append(el("h2", "crop-title", t("cropTitle")));
-  dialog.append(el("p", "crop-hint", t("cropHint")));
+  const hint = el("p", "crop-hint", t("cropHint"));
+  dialog.append(hint);
 
   const shot = renderShot(shotStep, dataUrl, { frames, areas, interactive: false });
   shot.classList.add("crop-shot");
@@ -282,13 +347,28 @@ function openCropEditor(shotStep, dataUrl, frames, areas) {
     ratioButtons.forEach((b, i) => b.setAttribute("aria-pressed", String(i === 0)));
     draw();
   });
+  // «Авто»: кадр без пустых полей по краям; применяется, как обычно, кнопкой «Применить»
+  const auto = el("button", "crop-button", t("cropAuto"));
+  auto.type = "button";
+  auto.title = t("autoCropTip");
+  auto.addEventListener("click", async () => {
+    const found = await computeAutoCrop(shotStep, dataUrl, frames);
+    if (!found) {
+      hint.textContent = t("cropAutoNothing");
+      return;
+    }
+    crop = found;
+    ratio = null;
+    ratioButtons.forEach((b, i) => b.setAttribute("aria-pressed", String(i === 0)));
+    draw();
+  });
   const cancel = el("button", "crop-button", t("cropCancel"));
   cancel.type = "button";
   cancel.addEventListener("click", () => dialog.close());
   const ok = el("button", "crop-button primary", t("cropApply"));
   ok.type = "button";
   ok.addEventListener("click", apply);
-  footer.append(ratios, reset, cancel, ok);
+  footer.append(ratios, auto, reset, cancel, ok);
   dialog.append(footer);
 
   // Enter — применить (кроме нажатия на кнопку), Esc закрывает окно сам
